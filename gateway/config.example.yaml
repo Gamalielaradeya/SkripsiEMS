@@ -1,0 +1,44 @@
+# ================================================================
+# Gateway — Config
+# Salin file ini menjadi config.yaml
+# ================================================================
+
+gateway:
+  id: "raspi-gateway-01"
+  name: "Raspberry Pi Gateway"
+  location: "Server Testbed Room"
+
+backend:
+  url: "http://localhost:8080"
+  api_token: "dev-token-change-in-production"
+  timeout_seconds: 10
+  retry_attempts: 3
+  retry_delay_seconds: 5
+
+sensor:
+  s1:
+    slave_id: 1
+    role: "ambient"
+    code: "S1"
+  s2:
+    slave_id: 2
+    role: "hotspot"
+    code: "S2"
+
+modbus:
+  port: "/dev/ttyUSB0"
+  baudrate: 9600
+  bytesize: 8
+  parity: "N"
+  stopbits: 1
+  timeout_seconds: 3
+
+simulator:
+  enabled: true
+  interval_seconds: 60
+  default_scenario: "normal"
+
+logging:
+  level: "info"
+  file: "logs/gateway.log"
+  max_size_mb: 10

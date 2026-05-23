@@ -1,0 +1,31 @@
+gateway:
+  id: "raspi-gateway-01"
+  name: "Raspberry Pi Gateway"
+  location: "Server Testbed Room"
+
+backend:
+  url: "http://localhost:8080"
+  api_token: "dev-token-change-in-production"
+  timeout_seconds: 10
+  retry_attempts: 3
+  retry_delay_seconds: 5
+
+simulator:
+  interval_seconds: 10
+
+modbus:
+  port: "COM3"
+  baudrate: 9600
+  bytesize: 8
+  parity: "N"
+  stopbits: 1
+  timeout_seconds: 3
+
+sensor:
+  s1:
+    slave_id: 1
+  s2:
+    slave_id: 2
+
+logging:
+  level: "info"
