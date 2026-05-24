@@ -6,6 +6,7 @@ import { formatTemp, formatHum, formatDateTime, formatRelative, cn, statusBg, st
 import { MetricCard, LoadingSpinner, ErrorState, StatusBadge } from '@/components/ui'
 import { TemperatureChart } from '@/components/charts/TemperatureChart'
 import { PredictionChart } from '@/components/charts/PredictionChart'
+import { LayoutPreviewSection } from '@/components/layout/LayoutPreviewSection'
 import type { DashboardSummary, AnomalyEvent } from '@/types'
 
 export default function DashboardPage() {
@@ -143,6 +144,13 @@ export default function DashboardPage() {
           <PredictionChart />
         </div>
       </div>
+
+      {/* ── Sensor Layout Preview ── */}
+      <LayoutPreviewSection
+        s1={summary?.s1_latest}
+        s2={summary?.s2_latest}
+        thermalStatus={thermalStatus}
+      />
 
       {/* ── Recent Anomalies ── */}
       <div className="card">
