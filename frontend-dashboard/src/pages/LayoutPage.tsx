@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Map, Move, Info } from 'lucide-react'
+import { Map, Pencil, StopCircle, Info } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useSSE } from '@/lib/sse'
 import { LoadingSpinner } from '@/components/ui'
@@ -10,6 +10,7 @@ import type { DashboardSummary } from '@/types'
 export default function LayoutPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [loading, setLoading] = useState(true)
+  const [editMode, setEditMode] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -21,7 +22,6 @@ export default function LayoutPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Auto-refresh sensor live readings via SSE
   useSSE(useCallback((event) => {
     if (event === 'reading.latest' || event === 'prediction.latest') {
       fetchData()
@@ -50,70 +50,60 @@ export default function LayoutPage() {
   ]
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-5xl">
+    <div className="flex flex-col gap-4 animate-fade-in h-full">
 
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-100 flex items-center gap-2">
-            <Map className="w-5 h-5 text-ems-400" /> Sensor Layout Editor
-          </h2>
-          <p className="text-sm text-gray-400 mt-1">
-            Atur posisi sensor pada denah ruangan. Posisi tersimpan secara lokal di browser.
-          </p>
-        </div>
-      </div>
-
-      {/* How-to guide */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {[
-          { icon: '🗺️', title: 'Upload Denah', desc: 'Klik "Upload Denah" untuk mengunggah gambar floor plan / denah ruangan (JPG/PNG).' },
-          { icon: '🖱️', title: 'Drag & Drop Sensor', desc: 'Seret ikon sensor S1 (ambient) dan S2 (hotspot) ke posisi yang sesuai pada denah.' },
-          { icon: '💾', title: 'Simpan Layout', desc: 'Klik "Simpan Layout". Posisi akan tampil live di Dashboard dan terupdate secara real-time.' },
-        ].map((step, i) => (
-          <div key={i} className="card flex items-start gap-3 p-4">
-            <span className="text-2xl leading-none mt-0.5">{step.icon}</span>
-            <div>
-              <p className="text-sm font-semibold text-gray-200">{step.title}</p>
-              <p className="text-xs text-gray-500 mt-1 leading-relaxed">{step.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Map Editor */}
-      <div className="card">
-        <div className="flex items-center gap-2 mb-4">
+      {/* Top bar */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-ems-600/15 border border-ems-600/30 flex items-center justify-center">
-            <Move className="w-4 h-4 text-ems-400" />
+            <Map className="w-4 h-4 text-ems-400" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-100">Edit Mode Aktif</h3>
-            <p className="text-xs text-gray-500">Seret sensor untuk memindahkan posisinya</p>
+            <h2 className="text-base font-semibold text-gray-100">Sensor Layout</h2>
+            <p className="text-xs text-gray-500">Posisi sensor pada denah ruangan server</p>
           </div>
         </div>
 
-        {loading ? (
+        {/* Edit / Stop Edit button — mirrors the reference UI */}
+        <button
+          onClick={() => setEditMode(m => !m)}
+          className={editMode
+            ? 'btn text-sm bg-red-600/80 hover:bg-red-600 text-white flex items-center gap-2 shadow-lg'
+            : 'btn btn-primary text-sm flex items-center gap-2 shadow-lg shadow-ems-500/20'
+          }
+        >
+          {editMode
+            ? <><StopCircle className="w-4 h-4" /> Stop Edit</>
+            : <><Pencil className="w-4 h-4" /> Edit Location</>
+          }
+        </button>
+      </div>
+
+      {/* Map — full area */}
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
           <LoadingSpinner size="lg" />
-        ) : (
+        </div>
+      ) : (
+        <div className="card flex-1 p-3">
           <SensorLayoutMap
             sensors={sensors}
-            editMode={true}
-            height={480}
+            editMode={editMode}
+            height={520}
           />
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Note */}
+      {/* Info note */}
       <div className="flex items-start gap-2 p-3 bg-ems-500/5 border border-ems-500/20 rounded-xl">
         <Info className="w-4 h-4 text-ems-400 shrink-0 mt-0.5" />
-        <p className="text-xs text-gray-400">
-          Posisi sensor dan gambar denah disimpan di <strong className="text-gray-300">localStorage browser</strong>. 
-          Untuk deployment multi-user di masa mendatang, posisi ini dapat dimigrasikan ke tabel database <code className="text-ems-400">layout_devices</code>.
-          Perubahan posisi akan langsung terlihat pada mini-map di halaman Dashboard.
+        <p className="text-xs text-gray-400 leading-relaxed">
+          Klik <strong className="text-gray-300">Edit Location</strong> untuk mengaktifkan mode edit. 
+          Lalu <strong className="text-gray-300">klik kanan</strong> di area denah untuk meletakkan sensor dari <em>Device List</em>. 
+          Seret ikon untuk memindahkan posisi. Klik <strong className="text-gray-300">✕</strong> di sudut ikon untuk melepasnya kembali ke Device List.
+          Posisi tersimpan di browser dan ter-sinkron ke mini-map di Dashboard.
         </p>
       </div>
-
     </div>
   )
 }

@@ -68,38 +68,52 @@ export default function DashboardPage() {
         <StatusBadge status={thermalStatus} size="lg" pulse />
       </div>
 
-      {/* ── Sensor Cards ── */}
-      <div>
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">Pembacaan Sensor</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard
-            title="Suhu S1 (Ambient)"
-            value={formatTemp(summary?.s1_latest?.temperature ?? null)}
-            icon={<Thermometer className="w-4 h-4" />}
-            color="text-blue-400"
-            subtitle={summary?.s1_latest?.recorded_at ? formatRelative(summary.s1_latest.recorded_at) : 'Belum ada data'}
+      {/* ── Layout Preview + Sensor Cards (side by side) ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+
+        {/* Layout mini-map — takes 3/5 */}
+        <div className="xl:col-span-3">
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">Peta Sensor</h2>
+          <LayoutPreviewSection
+            s1={summary?.s1_latest}
+            s2={summary?.s2_latest}
+            thermalStatus={thermalStatus}
           />
-          <MetricCard
-            title="Kelembaban S1"
-            value={formatHum(summary?.s1_latest?.humidity ?? null)}
-            icon={<Droplets className="w-4 h-4" />}
-            color="text-blue-300"
-            subtitle="Sensor ambient/referensi"
-          />
-          <MetricCard
-            title="Suhu S2 (Hotspot)"
-            value={formatTemp(summary?.s2_latest?.temperature ?? null)}
-            icon={<Thermometer className="w-4 h-4" />}
-            color={thermalStatus === 'anomali' ? 'text-red-400' : thermalStatus === 'waspada' ? 'text-amber-400' : 'text-orange-400'}
-            subtitle={summary?.s2_latest?.recorded_at ? formatRelative(summary.s2_latest.recorded_at) : 'Belum ada data'}
-          />
-          <MetricCard
-            title="Kelembaban S2"
-            value={formatHum(summary?.s2_latest?.humidity ?? null)}
-            icon={<Droplets className="w-4 h-4" />}
-            color="text-orange-300"
-            subtitle="Sensor hotspot/exhaust"
-          />
+        </div>
+
+        {/* Sensor metric cards — takes 2/5, stacked */}
+        <div className="xl:col-span-2">
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">Pembacaan Sensor</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <MetricCard
+              title="Suhu S1"
+              value={formatTemp(summary?.s1_latest?.temperature ?? null)}
+              icon={<Thermometer className="w-4 h-4" />}
+              color="text-blue-400"
+              subtitle={summary?.s1_latest?.recorded_at ? formatRelative(summary.s1_latest.recorded_at) : 'Belum ada data'}
+            />
+            <MetricCard
+              title="Hum S1"
+              value={formatHum(summary?.s1_latest?.humidity ?? null)}
+              icon={<Droplets className="w-4 h-4" />}
+              color="text-blue-300"
+              subtitle="Ambient"
+            />
+            <MetricCard
+              title="Suhu S2"
+              value={formatTemp(summary?.s2_latest?.temperature ?? null)}
+              icon={<Thermometer className="w-4 h-4" />}
+              color={thermalStatus === 'anomali' ? 'text-red-400' : thermalStatus === 'waspada' ? 'text-amber-400' : 'text-orange-400'}
+              subtitle={summary?.s2_latest?.recorded_at ? formatRelative(summary.s2_latest.recorded_at) : 'Belum ada data'}
+            />
+            <MetricCard
+              title="Hum S2"
+              value={formatHum(summary?.s2_latest?.humidity ?? null)}
+              icon={<Droplets className="w-4 h-4" />}
+              color="text-orange-300"
+              subtitle="Hotspot"
+            />
+          </div>
         </div>
       </div>
 
@@ -145,12 +159,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Sensor Layout Preview ── */}
-      <LayoutPreviewSection
-        s1={summary?.s1_latest}
-        s2={summary?.s2_latest}
-        thermalStatus={thermalStatus}
-      />
 
       {/* ── Recent Anomalies ── */}
       <div className="card">
