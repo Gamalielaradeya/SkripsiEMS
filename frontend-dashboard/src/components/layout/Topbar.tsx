@@ -1,7 +1,8 @@
 import { useLocation } from 'react-router-dom'
-import { RefreshCw, Wifi, WifiOff } from 'lucide-react'
+import { RefreshCw, Wifi, WifiOff, Sun, Moon } from 'lucide-react'
 import { cn, statusBg, statusLabel, statusDot } from '@/lib/utils'
 import type { ThermalStatus } from '@/types'
+import type { Theme } from '@/App'
 
 const PAGE_TITLES: Record<string, string> = {
   '/':              'Dashboard',
@@ -19,22 +20,24 @@ interface TopbarProps {
   thermalStatus?: ThermalStatus
   connected?: boolean
   onRefresh?: () => void
+  theme?: Theme
+  onToggleTheme?: () => void
 }
 
-export function Topbar({ thermalStatus = 'normal', connected = true, onRefresh }: TopbarProps) {
+export function Topbar({ thermalStatus = 'normal', connected = true, onRefresh, theme = 'dark', onToggleTheme }: TopbarProps) {
   const { pathname } = useLocation()
   const title = PAGE_TITLES[pathname] ?? 'EMS Monitor'
 
   return (
     <header className="h-14 glass fixed top-0 left-60 right-0 z-30 flex items-center justify-between px-6">
-      <h1 className="text-base font-semibold text-gray-100">{title}</h1>
+      <h1 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h1>
 
       <div className="flex items-center gap-4">
         {/* SSE connection */}
         <div className="flex items-center gap-1.5 text-xs">
           {connected
             ? <><Wifi className="w-3.5 h-3.5 text-green-400" /><span className="text-green-400">Live</span></>
-            : <><WifiOff className="w-3.5 h-3.5 text-gray-500" /><span className="text-gray-500">Offline</span></>
+            : <><WifiOff className="w-3.5 h-3.5 text-zinc-500" /><span style={{ color: 'var(--text-muted)' }}>Offline</span></>
           }
         </div>
 
@@ -46,12 +49,20 @@ export function Topbar({ thermalStatus = 'normal', connected = true, onRefresh }
           </span>
         )}
 
-        {/* Refresh */}
+        {/* Theme toggle */}
         <button
-          onClick={onRefresh}
+          onClick={onToggleTheme}
           className="btn btn-ghost p-2"
-          title="Refresh data"
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
         >
+          {theme === 'dark'
+            ? <Sun className="w-4 h-4" />
+            : <Moon className="w-4 h-4" />
+          }
+        </button>
+
+        {/* Refresh */}
+        <button onClick={onRefresh} className="btn btn-ghost p-2" title="Refresh data">
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>

@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Serial Settings — EMS Gateway{% endblock %}
+{% block page_title %}Serial Settings{% endblock %}
+
+{% block content %}
+
+<!-- Flash message -->
+{% if msg %}
+<div class="alert alert-{{ msg_type or 'success' }}">
+  {% if msg_type == 'error' %}❌{% else %}✅{% endif %} {{ msg }}
+</div>
+{% endif %}
+
+<form method="POST" action="/serial">
+
+<div class="grid-2">
+
+  <!-- ── Modbus Port & Parameters ─────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-header-title">🔌 Modbus RTU Settings</span>
+    </div>
+    <div class="card-body">
+
+      <div class="form-row">
+        <label class="form-label">Port USB</label>
+        <select name="port" class="form-select">
+          {% for p in ports %}
+            <option value="{{ p.device }}" {% if p.device == cfg.modbus.port %}selected{% endif %}>
+              {{ p.device }} — {{ p.description }}
+            </option>
+          {% endfor %}
+        </select>
+        <button type="button" class="btn btn-ghost btn-sm"
+                hx-get="/api/scan-ports"
+                hx-target="select[name='port']"
+                hx-swap="innerHTML"
+                title="Scan ulang port yang tersedia">
+          🔍
+        </button>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Baud Rate</label>
+        <select name="baudrate" class="form-select form-input-sm">
+          {% for br in [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200] %}
+            <option value="{{ br }}" {% if br == cfg.modbus.baudrate %}selected{% endif %}>{{ br }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Data Bits</label>
+        <select name="bytesize" class="form-select form-input-sm">
+          {% for b in [7, 8] %}
+            <option value="{{ b }}" {% if b == cfg.modbus.bytesize %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Stop Bits</label>
+        <select name="stopbits" class="form-select form-input-sm">
+          {% for s in [1, 2] %}
+            <option value="{{ s }}" {% if s == cfg.modbus.stopbits %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Parity Mode</label>
+        <select name="parity" class="form-select form-input-sm">
+          <option value="N" {% if cfg.modbus.parity == 'N' %}selected{% endif %}>None (N)</option>
+          <option value="E" {% if cfg.modbus.parity == 'E' %}selected{% endif %}>Even (E)</option>
+          <option value="O" {% if cfg.modbus.parity == 'O' %}selected{% endif %}>Odd (O)</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Timeout (detik)</label>
+        <input type="number" name="timeout" class="form-input form-input-sm"
+               value="{{ cfg.modbus.timeout }}" min="1" max="30" />
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Polling Interval (detik)</label>
+        <input type="number" name="interval_seconds" class="form-input form-input-sm"
+               value="{{ cfg.polling.interval_seconds }}" min="5" max="3600" />
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Sensor Address Configuration ─────────────────────────────────── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-header-title">🌡️ Sensor Address Configuration</span>
+    </div>
+    <div class="card-body">
+
+      <p class="text-muted text-sm" style="margin-bottom:12px">
+        XY-MD02 default: Temp reg=1, Humidity reg=2, Scale=10 (raw/10 = °C/%RH)
+      </p>
+
+      {% for i, s in enumerate(cfg.sensors) %}
+      <div style="border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:12px;">
+        <div class="flex items-center justify-between" style="margin-bottom:8px">
+          <strong style="color:var(--accent)">{{ s.id }} — {{ s.name }}</strong>
+          <label class="toggle-label">
+            <input type="checkbox" name="sensor_{{ i }}_enabled"
+                   {% if s.enabled %}checked{% endif %} />
+            Enabled
+          </label>
+        </div>
+
+        <table class="sensor-table">
+          <tr>
+            <th>Field</th><th>Nilai</th>
+          </tr>
+          <tr>
+            <td>Slave ID</td>
+            <td><input type="number" name="sensor_{{ i }}_slave_id"
+                       class="form-input form-input-sm" value="{{ s.slave_id }}" min="1" max="247" /></td>
+          </tr>
+          <tr>
+            <td>Temp Register (desimal)</td>
+            <td><input type="number" name="sensor_{{ i }}_temp_register"
+                       class="form-input form-input-sm" value="{{ s.temp_register }}" min="0" /></td>
+          </tr>
+          <tr>
+            <td>Humidity Register (desimal)</td>
+            <td><input type="number" name="sensor_{{ i }}_humidity_register"
+                       class="form-input form-input-sm" value="{{ s.humidity_register }}" min="0" /></td>
+          </tr>
+          <tr>
+            <td>Temp Scale (÷)</td>
+            <td><input type="number" name="sensor_{{ i }}_temp_scale" step="0.1"
+                       class="form-input form-input-sm" value="{{ s.temp_scale }}" min="0.1" /></td>
+          </tr>
+          <tr>
+            <td>Humidity Scale (÷)</td>
+            <td><input type="number" name="sensor_{{ i }}_humidity_scale" step="0.1"
+                       class="form-input form-input-sm" value="{{ s.humidity_scale }}" min="0.1" /></td>
+          </tr>
+          <tr>
+            <td>Nama</td>
+            <td><input type="text" name="sensor_{{ i }}_name"
+                       class="form-input" value="{{ s.name }}" /></td>
+          </tr>
+        </table>
+      </div>
+      {% endfor %}
+
+    </div>
+  </div>
+
+</div>
+
+<div style="text-align:right; margin-top:8px">
+  <button type="submit" class="btn btn-primary">
+    💾 Simpan Konfigurasi
+  </button>
+</div>
+
+</form>
+{% endblock %}

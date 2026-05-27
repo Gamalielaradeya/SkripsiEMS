@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Serial Test — EMS Gateway{% endblock %}
+{% block page_title %}Serial Test{% endblock %}
+
+{% block content %}
+
+<div class="grid-2">
+
+  <!-- ── Quick Test Form ─────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-header-title">🔬 Quick Sensor Test</span>
+    </div>
+    <div class="card-body" x-data="{loading: false}">
+      <p class="text-muted text-sm" style="margin-bottom:16px">
+        Baca sensor sekali tanpa menyimpan data. Cocok untuk verifikasi kabel & alamat sensor.
+      </p>
+
+      <div class="form-row">
+        <label class="form-label">Port</label>
+        <select id="test-port" class="form-select">
+          {% for p in ports %}
+            <option value="{{ p.device }}" {% if p.device == cfg.modbus.port %}selected{% endif %}>
+              {{ p.device }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Slave ID</label>
+        <input type="number" id="test-slave" class="form-input form-input-sm"
+               value="{{ cfg.sensors[0].slave_id }}" min="1" max="247" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Temp Register</label>
+        <input type="number" id="test-temp-reg" class="form-input form-input-sm"
+               value="{{ cfg.sensors[0].temp_register }}" min="0" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Humidity Register</label>
+        <input type="number" id="test-hum-reg" class="form-input form-input-sm"
+               value="{{ cfg.sensors[0].humidity_register }}" min="0" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Baud Rate</label>
+        <select id="test-baud" class="form-select form-input-sm">
+          {% for br in [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200] %}
+            <option value="{{ br }}" {% if br == cfg.modbus.baudrate %}selected{% endif %}>{{ br }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="btn-group mt-4">
+        <button class="btn btn-primary"
+                hx-post="/api/test-read"
+                hx-include="#test-port, #test-slave, #test-temp-reg, #test-hum-reg, #test-baud"
+                hx-target="#test-result"
+                hx-swap="innerHTML"
+                hx-indicator="#test-spinner">
+          ▶ Baca Sekarang
+          <span id="test-spinner" class="spinner"></span>
+        </button>
+      </div>
+
+      <div id="test-result" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <!-- ── Slave Scanner ──────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-header-title">🔍 Slave ID Scanner</span>
+    </div>
+    <div class="card-body">
+      <p class="text-muted text-sm" style="margin-bottom:16px">
+        Scan slave ID secara otomatis (1 s.d. 20) untuk mendeteksi sensor yang terhubung.
+      </p>
+
+      <div class="form-row">
+        <label class="form-label">Start ID</label>
+        <input type="number" id="scan-start" class="form-input form-input-sm" value="1" min="1" max="247" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">End ID</label>
+        <input type="number" id="scan-end" class="form-input form-input-sm" value="10" min="1" max="247" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Register (untuk cek)</label>
+        <input type="number" id="scan-reg" class="form-input form-input-sm" value="1" min="0" />
+      </div>
+
+      <div class="btn-group mt-4">
+        <button class="btn btn-primary"
+                hx-post="/api/scan-slaves"
+                hx-include="#test-port, #test-baud, #scan-start, #scan-end, #scan-reg"
+                hx-target="#scan-result"
+                hx-swap="innerHTML"
+                hx-indicator="#scan-spinner">
+          🔍 Mulai Scan
+          <span id="scan-spinner" class="spinner"></span>
+        </button>
+      </div>
+
+      <div id="scan-result" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Live Monitor Box ──────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-header-title">📟 Live Monitor (Semua Sensor dari Config)</span>
+    <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,0.3)"
+            hx-post="/api/read-all"
+            hx-target="#monitor-box"
+            hx-swap="afterbegin"
+            hx-indicator="#monitor-spinner">
+      🔄 Read All
+      <span id="monitor-spinner" class="spinner"></span>
+    </button>
+  </div>
+  <div class="card-body">
+    <div id="monitor-box" class="monitor-box">
+      <span class="line-info">EMS Gateway Serial Monitor siap. Tekan "Read All" untuk baca semua sensor dari konfigurasi.</span>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

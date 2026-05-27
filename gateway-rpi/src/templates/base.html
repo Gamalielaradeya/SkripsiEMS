@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}EMS Gateway{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://unpkg.com/htmx.org@1.9.12" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">📡</div>
+      <div class="sidebar-logo-text">
+        <div class="sidebar-logo-name">EMS Gateway</div>
+        <div class="sidebar-logo-sub">{{ gateway_name }}</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="/"         class="nav-item {% if active == 'overview' %}active{% endif %}">
+        <span class="nav-icon">🏠</span> Overview
+      </a>
+      <a href="/serial"   class="nav-item {% if active == 'serial' %}active{% endif %}">
+        <span class="nav-icon">🔌</span> Serial Settings
+      </a>
+      <a href="/test"     class="nav-item {% if active == 'test' %}active{% endif %}">
+        <span class="nav-icon">🔬</span> Serial Test
+      </a>
+      <a href="/network"  class="nav-item {% if active == 'network' %}active{% endif %}">
+        <span class="nav-icon">📶</span> Network
+      </a>
+      <a href="/settings" class="nav-item {% if active == 'settings' %}active{% endif %}">
+        <span class="nav-icon">⚙️</span> App Settings
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      EMS Thermal Anomaly<br>
+      Skripsi UBM · 2026
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <span class="topbar-title">{% block page_title %}EMS Gateway{% endblock %}</span>
+      <div class="topbar-actions">
+        <span id="ems-ping"
+              hx-get="/api/ems-ping"
+              hx-trigger="load, every 30s"
+              hx-swap="outerHTML">
+          <span class="status-badge status-warning"><span class="dot dot-yellow"></span> Checking...</span>
+        </span>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+</div>
+</body>
+</html>

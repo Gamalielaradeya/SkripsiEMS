@@ -8,25 +8,43 @@ export default {
   theme: {
     extend: {
       colors: {
-        // EMS Brand colors
-        ems: {
-          50:  '#f0faf4',
-          100: '#dcf5e5',
-          200: '#bbe9cc',
-          300: '#86d6a7',
-          400: '#4dba7f',
-          500: '#29a05f',
-          600: '#1a844b',
-          700: '#176940',
-          800: '#165335',
-          900: '#13442d',
+        // ── Override gray with Zinc palette (shadcn/ui Zinc) ──────────────
+        // All existing bg-gray-* classes now render as zinc values automatically
+        gray: {
+          50:  '#fafafa',
+          100: '#f4f4f5',
+          200: '#e4e4e7',
+          300: '#d4d4d8',
+          400: '#a1a1aa',
+          500: '#71717a',
+          600: '#52525b',
+          700: '#3f3f46',
+          800: '#27272a',
+          900: '#18181b',
+          950: '#09090b',
         },
-        // Status colors
+
+        // ── EMS Brand / Accent (green) ────────────────────────────────────
+        ems: {
+          50:  '#f0fdf4',
+          100: '#dcfce7',
+          200: '#bbf7d0',
+          300: '#86efac',
+          400: '#4ade80',
+          500: '#22c55e',
+          600: '#16a34a',
+          700: '#15803d',
+          800: '#166534',
+          900: '#14532d',
+          950: '#052e16',
+        },
+
+        // ── Status colors (unchanged) ─────────────────────────────────────
         status: {
           normal:  '#22c55e',
           waspada: '#f59e0b',
           anomali: '#ef4444',
-          trouble: '#6b7280',
+          trouble: '#71717a',
         },
       },
       fontFamily: {

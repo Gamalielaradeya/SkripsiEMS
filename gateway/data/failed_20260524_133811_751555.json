@@ -1,0 +1,1 @@
+{"gateway_id": "raspi-gateway-01", "recorded_at": "2026-05-24T13:38:11.104619+00:00", "source": "simulator", "readings": [{"sensor_code": "S1", "sensor_role": "ambient", "temperature": 26.02, "humidity": 66.17}, {"sensor_code": "S2", "sensor_role": "hotspot", "temperature": 28.62, "humidity": 57.93}]}

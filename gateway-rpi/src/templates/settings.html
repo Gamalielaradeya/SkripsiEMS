@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}App Settings — EMS Gateway{% endblock %}
+{% block page_title %}Application Settings{% endblock %}
+
+{% block content %}
+
+{% if msg %}
+<div class="alert alert-{{ msg_type or 'success' }}">
+  {% if msg_type == 'error' %}❌{% else %}✅{% endif %} {{ msg }}
+</div>
+{% endif %}
+
+<form method="POST" action="/settings">
+
+  <!-- ── EMS Server Settings ──────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-header-title">🖥️ EMS Server Settings</span>
+    </div>
+    <div class="card-body">
+
+      <div class="form-row">
+        <label class="form-label">Base URL</label>
+        <input type="text" name="ems_url" class="form-input"
+               value="{{ cfg.ems_server.url }}"
+               placeholder="http://192.168.1.100:8080" style="max-width:340px" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">API Token</label>
+        <input type="text" name="api_token" class="form-input"
+               value="{{ cfg.ems_server.api_token }}"
+               placeholder="ems-gateway-token" style="max-width:340px" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Request Timeout (detik)</label>
+        <input type="number" name="ems_timeout" class="form-input form-input-sm"
+               value="{{ cfg.ems_server.timeout }}" min="3" max="60" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Retry Attempts</label>
+        <input type="number" name="retry_attempts" class="form-input form-input-sm"
+               value="{{ cfg.ems_server.retry_attempts }}" min="1" max="10" />
+      </div>
+
+      <div class="mt-4">
+        <button type="button" class="btn btn-ghost"
+                hx-post="/api/test-connection"
+                hx-include="[name='ems_url']"
+                hx-target="#conn-test-result"
+                hx-swap="innerHTML">
+          🔗 Test Koneksi ke EMS
+        </button>
+        <span id="conn-test-result" style="margin-left:10px"></span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Gateway Identity ─────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-header-title">🏷️ Gateway Identity</span>
+    </div>
+    <div class="card-body">
+      <div class="form-row">
+        <label class="form-label">Gateway ID</label>
+        <input type="text" name="gateway_id" class="form-input"
+               value="{{ cfg.gateway.id }}" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Gateway Name</label>
+        <input type="text" name="gateway_name" class="form-input"
+               value="{{ cfg.gateway.name }}" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Location</label>
+        <input type="text" name="gateway_location" class="form-input"
+               value="{{ cfg.gateway.location or '' }}"
+               placeholder="Opsional: nama ruangan/gedung" />
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:right">
+    <button type="submit" class="btn btn-primary">
+      💾 Simpan Pengaturan
+    </button>
+  </div>
+
+</form>
+{% endblock %}

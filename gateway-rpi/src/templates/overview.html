@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Overview — EMS Gateway{% endblock %}
+{% block page_title %}Overview{% endblock %}
+
+{% block content %}
+
+<!-- Connection Status -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-header-title">📶 Connection Status</span>
+  </div>
+  <div class="card-body">
+    <div class="conn-flow">
+      <div class="conn-node">
+        <div class="conn-node-icon">📡</div>
+        <div class="conn-node-label">Gateway</div>
+        <span class="status-badge status-online"><span class="dot dot-green"></span> Operational</span>
+      </div>
+      <div class="conn-arrow">→</div>
+      <div class="conn-node">
+        <div class="conn-node-icon">🌐</div>
+        <div class="conn-node-label">Network</div>
+        <span id="net-status"
+              hx-get="/api/network-status"
+              hx-trigger="load, every 15s"
+              hx-swap="outerHTML">
+          <span class="status-badge status-warning"><span class="dot dot-yellow"></span> Checking...</span>
+        </span>
+      </div>
+      <div class="conn-arrow">→</div>
+      <div class="conn-node">
+        <div class="conn-node-icon">🖥️</div>
+        <div class="conn-node-label">EMS Server</div>
+        <span id="ems-status"
+              hx-get="/api/ems-status"
+              hx-trigger="load, every 15s"
+              hx-swap="outerHTML">
+          <span class="status-badge status-warning"><span class="dot dot-yellow"></span> Checking...</span>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+
+  <!-- Gateway Information -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-header-title">ℹ️ Gateway Information</span>
+    </div>
+    <div class="card-body" style="padding:0">
+      <table class="info-table">
+        <tr><td>Gateway ID</td><td>{{ cfg.gateway.id }}</td></tr>
+        <tr><td>Name</td><td>{{ cfg.gateway.name }}</td></tr>
+        <tr><td>Location</td><td>{{ cfg.gateway.location or '—' }}</td></tr>
+        <tr><td>Modbus Port</td><td><code>{{ cfg.modbus.port }}</code></td></tr>
+        <tr><td>EMS Server</td><td>{{ cfg.ems_server.url }}</td></tr>
+        <tr><td>Polling Interval</td><td>{{ cfg.polling.interval_seconds }}s</td></tr>
+        <tr><td>Polling Status</td>
+          <td>
+            {% if poller.running %}
+              <span class="status-badge status-online"><span class="dot dot-green"></span> Running</span>
+            {% else %}
+              <span class="status-badge status-offline"><span class="dot dot-red"></span> Stopped</span>
+            {% endif %}
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Poller Control -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-header-title">⚡ Poller Control</span>
+    </div>
+    <div class="card-body">
+
+      <div id="poller-info"
+           hx-get="/api/poller-status"
+           hx-trigger="load, every 10s"
+           hx-swap="outerHTML">
+        <table class="info-table" style="margin-bottom:12px">
+          <tr><td>Mode</td>
+            <td>
+              {% if cfg.gather_data.enabled %}
+                <span class="status-badge" style="background:rgba(124,58,237,0.15);color:#7c3aed">📦 Gather Data</span>
+              {% else %}
+                <span class="status-badge" style="background:rgba(16,185,129,0.12);color:#059669">🚀 Forward ke EMS</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr><td>Status</td><td>{{ poller.last_status }}</td></tr>
+          <tr><td>Last Run</td><td>{{ poller.last_run or '—' }}</td></tr>
+          <tr><td>Sent OK</td><td>{{ poller.sent_count }}</td></tr>
+          <tr><td>Skipped (EMS)</td><td>{{ poller.skip_count }}</td></tr>
+          <tr><td>Gathered (local)</td><td>{{ row_count }} baris</td></tr>
+        </table>
+      </div>
+
+      <div class="btn-group mt-4">
+        {% if not poller.running %}
+          <button class="btn btn-success"
+                  hx-post="/api/poller/start"
+                  hx-target="#poller-info"
+                  hx-swap="outerHTML">▶ Start Polling</button>
+        {% else %}
+          <button class="btn btn-danger"
+                  hx-post="/api/poller/stop"
+                  hx-target="#poller-info"
+                  hx-swap="outerHTML">■ Stop Polling</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Gather Data Mode Toggle -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-header-title">📦 Mode Data — Gather Lokal vs Forward ke EMS</span>
+  </div>
+  <div class="card-body">
+    <p class="text-muted text-sm" style="margin-bottom:14px">
+      <strong>Forward ke EMS (default):</strong> Data langsung dikirim ke EMS server. Kalau EMS offline, data di-<em>skip</em> (tidak disimpan). <br>
+      <strong>Gather Data (mode training):</strong> Data disimpan di SQLite lokal RPi. Tidak dikirim ke EMS. Export CSV kalau sudah cukup untuk training.
+    </p>
+
+    <div id="gather-toggle-block">
+      <div class="alert {{ 'alert-info' if cfg.gather_data.enabled else 'alert-success' }}" style="margin-bottom:8px">
+        {% if cfg.gather_data.enabled %}
+          📦 Gather Data AKTIF — data disimpan lokal, TIDAK dikirim ke EMS
+        {% else %}
+          🚀 Forward Mode AKTIF — data langsung dikirim ke EMS (fire-and-forget)
+        {% endif %}
+      </div>
+      <button class="btn" style="background:{{ '#7c3aed' if cfg.gather_data.enabled else '#059669' }};color:#fff"
+              hx-post="/api/gather/toggle"
+              hx-target="#gather-toggle-block"
+              hx-swap="outerHTML">
+        {% if cfg.gather_data.enabled %}
+          🔄 Switch ke Forward (EMS)
+        {% else %}
+          🔄 Switch ke Gather Data (Lokal)
+        {% endif %}
+      </button>
+    </div>
+
+    <!-- Export & Clear (tampil kalau ada data) -->
+    {% if row_count > 0 %}
+    <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border)">
+      <p class="text-sm text-muted" style="margin-bottom:8px">
+        📊 <strong>{{ row_count }}</strong> baris data tersimpan di lokal
+      </p>
+      <div class="btn-group">
+        <a href="/api/gather/export-csv" class="btn btn-primary btn-sm">
+          ⬇️ Export CSV
+        </a>
+        <button class="btn btn-danger btn-sm"
+                hx-post="/api/gather/clear"
+                hx-confirm="Hapus semua {{ row_count }} baris data lokal?"
+                hx-target="#gather-clear-msg"
+                hx-swap="innerHTML">
+          🗑️ Hapus Data Lokal
+        </button>
+      </div>
+      <div id="gather-clear-msg" style="margin-top:8px"></div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- Live Sensor Readings -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-header-title">🌡️ Pembacaan Sensor Terakhir</span>
+    <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,0.3)"
+            hx-get="/api/live-readings"
+            hx-target="#live-readings"
+            hx-swap="innerHTML">
+      🔄 Refresh
+    </button>
+  </div>
+  <div class="card-body">
+    <div id="live-readings"
+         class="grid-2"
+         hx-get="/api/live-readings"
+         hx-trigger="load, every {{ cfg.polling.interval_seconds }}s"
+         hx-swap="innerHTML">
+      {% for s in poller.readings %}
+      <div class="sensor-card">
+        <div class="sensor-card-id">{{ s.id }}</div>
+        <div class="sensor-card-name">{{ s.name }}</div>
+        {% if s.ok %}
+          <div class="sensor-card-val">{{ s.temperature }}<span class="sensor-card-unit"> °C</span></div>
+          <div class="text-muted text-sm">Humidity: {{ s.humidity }}%</div>
+        {% else %}
+          <div class="sensor-card-val" style="color:var(--red);font-size:14px">Error</div>
+          <div class="text-muted text-sm">{{ s.error }}</div>
+        {% endif %}
+      </div>
+      {% else %}
+        <p class="text-muted text-sm">Belum ada data. Jalankan poller atau cek Serial Test.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
