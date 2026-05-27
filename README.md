@@ -8,7 +8,7 @@
 ## 🏗️ Arsitektur Sistem
 
 ```
-[Sensor XY-MD02] ─── Modbus RTU ──► [Raspberry Pi Gateway]
+[Sensor XY-MD02] ─── Modbus RTU ──► [RPi Gateway / Simulator]
                                             │ HTTP POST
                                             ▼
                                     [Go Backend API :8080]
@@ -62,8 +62,11 @@ npm run dev
 # → http://localhost:5173
 ```
 
-### 5. Jalankan Gateway Simulator
+### 5. Jalankan Gateway
 
+Sistem mendukung dua mode gateway, yaitu **Simulator** (untuk pengujian) dan **Real Hardware** (berbasis Raspberry Pi).
+
+**Opsi A: Gateway Simulator (PC)**
 ```bash
 cd gateway/src
 
@@ -78,6 +81,22 @@ python main.py --mode simulator --scenario anomali
 
 # Inject 300 data historis untuk demo chart
 python ../inject_demo_data.py
+```
+
+**Opsi B: RPi Gateway (Real Hardware + Web UI)**
+```bash
+cd gateway-rpi
+
+# Setup (sekali saja di RPi)
+./install.sh
+
+# Jalankan (via virtual environment)
+source .venv/bin/activate
+cd src
+uvicorn main:app --host 0.0.0.0 --port 8765
+
+# Akses Web UI di http://localhost:8765 untuk konfigurasi port serial, Modbus, 
+# manajemen jaringan (WiFi/IP), dan toggle mode "Gather Data" (SQLite lokal).
 ```
 
 ### 6. Training LSTM Model
@@ -120,10 +139,9 @@ python scheduler.py --interval 1
 - **Features**: SSE real-time push, Telegram notification, CRUD semua entitas
 - **Endpoint utama**: `GET /api/v1/dashboard/summary`, `POST /api/v1/readings`
 
-### Gateway Simulator (Python)
-- **Protokol**: HTTP POST ke backend (mendukung Modbus RTU untuk hardware nyata)
-- **Skenario**: `normal` | `warming` | `waspada` | `anomali` | `trouble`
-- **Fitur**: Retry otomatis, local buffer jika backend mati, validasi nilai sensor
+### Gateway (Simulator & RPi)
+- **Simulator (`gateway/`)**: Program berbasis CLI (Python) yang dapat menghasilkan dummy data HTTP POST ke backend dengan mendukung berbagai skenario data (`normal`, `warming`, `waspada`, `anomali`, `trouble`). Terdapat fitur retry otomatis dan local buffer.
+- **RPi Gateway (`gateway-rpi/`)**: Program berbasis FastAPI untuk RPi yang membaca sensor fisik XY-MD02 via Modbus RTU. Dilengkapi **Web UI** mandiri untuk kemudahan konfigurasi port serial, manajemen WiFi/Static IP, dan mode **"Gather Data"** (menyimpan data sensor secara lokal ke SQLite untuk pengumpulan dataset Machine Learning).
 
 ### ML Worker (Python + TensorFlow)
 - **Model**: LSTM 2 layer (64→32 unit), Dropout 0.2
@@ -220,8 +238,11 @@ SkripsiGama/
 │   └── internal/{config,model,repository,handler,middleware,service}/
 ├── frontend-dashboard/         ← React Dashboard (M5)
 │   └── src/{pages,components,lib,types}/
-├── gateway/                    ← Python Gateway (M4)
+├── gateway/                    ← Python Gateway Simulator (M4)
 │   └── src/{main,simulator,http_sender,...}.py
+├── gateway-rpi/                ← FastAPI RPi Gateway (Web UI & Modbus)
+│   ├── src/main.py
+│   └── templates/              ← HTML UI (HTMX + Alpine.js)
 ├── ml-worker/                  ← Python ML (M6)
 │   ├── src/{train_lstm,inference,scheduler,...}.py
 │   └── models/                 ← Saved LSTM model
