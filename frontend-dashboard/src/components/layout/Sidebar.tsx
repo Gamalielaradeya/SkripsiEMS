@@ -24,8 +24,9 @@ interface SidebarProps {
 
 export function Sidebar({ theme = 'dark' }: SidebarProps) {
   return (
+    <>
     <aside
-      className="fixed top-0 left-0 h-screen w-60 flex flex-col z-40"
+      className="fixed top-0 left-0 h-screen w-60 hidden md:flex flex-col z-40"
       style={{
         backgroundColor: 'var(--sidebar-bg)',
         borderRight: '1px solid var(--sidebar-border)',
@@ -71,5 +72,25 @@ export function Sidebar({ theme = 'dark' }: SidebarProps) {
         </p>
       </div>
     </aside>
+    <nav
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex gap-1 overflow-x-auto px-2 py-2"
+      style={{ backgroundColor: 'var(--sidebar-bg)', borderTop: '1px solid var(--sidebar-border)' }}
+    >
+      {navItems.map(({ to, icon: Icon, label }) => (
+        <NavLink
+          key={to}
+          to={to}
+          end={to === '/'}
+          className={({ isActive }) => cn(
+            'min-w-[76px] flex flex-col items-center gap-1 rounded-lg px-2 py-1.5 text-[10px]',
+            isActive ? 'text-ems-400 bg-ems-500/10' : 'text-gray-500'
+          )}
+        >
+          <Icon className="w-4 h-4" />
+          <span>{label}</span>
+        </NavLink>
+      ))}
+    </nav>
+    </>
   )
 }

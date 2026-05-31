@@ -74,8 +74,14 @@ sensors:
 
 ems_server:
   url: "http://192.168.1.100:8080"
-  api_token: "ems-gateway-token"
+  api_token: "dev-token-change-in-production"
+
+gateway:
+  id: "raspi-gateway-01"
 ```
+
+Sender RPi mengirim ke `POST /api/v1/readings` dengan header `Authorization: Bearer <token>`.
+Pembacaan timeout dikirim sebagai `quality_status: timeout` agar backend menandai sensor `trouble`.
 
 ## Catatan Raspberry Pi
 

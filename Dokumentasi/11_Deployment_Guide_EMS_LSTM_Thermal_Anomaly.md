@@ -1,5 +1,7 @@
 # 11 Deployment Guide — EMS LSTM Thermal Anomaly Monitoring System
 
+> **Catatan implementasi terbaru:** gunakan `15_Implementation_Runbook_Final.md` sebagai panduan deploy lokal. Compose aktual memakai service `db`, migration layout `004_layout_constraints.sql`, seed layout `007_seed_layout.sql`, dan hardware fisik berada di `gateway-rpi/`.
+
 **Judul Skripsi:** Prediksi Anomali Termal pada Environment Monitoring System Server Menggunakan Algoritma Long Short-Term Memory  
 **Jenis Dokumen:** Deployment Guide  
 **Versi:** 1.0  

@@ -146,7 +146,7 @@ export default function SettingsPage() {
       ))}
 
       {/* Floating Save Bar */}
-      <div className={`fixed bottom-0 left-60 right-0 p-4 glass border-t border-gray-800 flex justify-between items-center transition-transform duration-300 z-40 ${isDirty ? 'translate-y-0' : 'translate-y-full'}`}>
+      <div className={`fixed bottom-14 md:bottom-0 left-0 md:left-60 right-0 p-4 glass border-t border-gray-800 flex flex-wrap gap-3 justify-between items-center transition-transform duration-300 z-40 ${isDirty ? 'translate-y-0' : 'translate-y-full'}`}>
         <div className="flex items-center gap-3">
           <span className="text-amber-400 text-sm font-medium animate-pulse">⚠️ Ada perubahan yang belum disimpan</span>
           {saveMsg && <span className="text-sm">{saveMsg}</span>}

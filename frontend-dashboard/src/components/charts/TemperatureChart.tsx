@@ -5,7 +5,7 @@ import {
   LineElement, Title, Tooltip, Legend, Filler
 } from 'chart.js'
 import { api } from '@/lib/api'
-import type { SensorReading } from '@/types'
+import type { Sensor, SensorReading } from '@/types'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
@@ -65,11 +65,16 @@ function fmtLabel(iso: string, range: Range): string {
 export function TemperatureChart() {
   const [allReadings, setAllReadings] = useState<SensorReading[]>([])
   const [activeRange, setActiveRange] = useState<Range>('30m')
+  const [sensorIds, setSensorIds] = useState<Record<string, number>>({})
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await api.readingsHistory(500) as ReadingsResponse
+      const [res, sensors] = await Promise.all([
+        api.readingsHistory(500) as Promise<ReadingsResponse>,
+        api.sensors() as Promise<Sensor[]>,
+      ])
       setAllReadings((res?.readings ?? []).reverse())
+      setSensorIds(Object.fromEntries(sensors.map(sensor => [sensor.sensor_code, sensor.id])))
     } catch {}
   }, [])
 
@@ -85,9 +90,8 @@ export function TemperatureChart() {
   const filtered = allReadings.filter(r => new Date(r.recorded_at).getTime() >= cutoff)
 
   // Separate sensors
-  const sensorIds = [...new Set(filtered.map(r => r.sensor_id))]
-  let s1 = filtered.filter(r => r.sensor_id === sensorIds[0])
-  let s2 = filtered.filter(r => r.sensor_id === sensorIds[1])
+  let s1 = filtered.filter(r => r.sensor_id === sensorIds.S1)
+  let s2 = filtered.filter(r => r.sensor_id === sensorIds.S2)
 
   // Aggregate if needed
   if (rangeConfig.aggregate) {

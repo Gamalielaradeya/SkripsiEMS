@@ -1,38 +1,30 @@
-# Gateway — EMS LSTM Thermal Anomaly
+# Gateway Simulator - EMS Thermal Anomaly
 
-Gateway Python untuk membaca sensor XY-MD02 via Modbus RS485 atau simulator.
+Folder ini hanya untuk simulator CLI. Gateway sensor fisik Raspberry Pi berada di `gateway-rpi/`.
 
 ## Setup
 
 ```bash
-pip install -r requirements.txt
 cp .env.example .env
-cp config.example.yaml config.yaml
-# Edit config.yaml sesuai kebutuhan
+pip install -r requirements.txt
 ```
 
-## Mode
+## Jalankan Skenario
 
 ```bash
-# Simulator - skenario normal
 python src/main.py --mode simulator --scenario normal
-
-# Simulator - skenario waspada
+python src/main.py --mode simulator --scenario warming
 python src/main.py --mode simulator --scenario waspada
-
-# Simulator - skenario anomali
 python src/main.py --mode simulator --scenario anomali
-
-# Hardware - sensor fisik
-python src/main.py --mode hardware
+python src/main.py --mode simulator --scenario trouble
 ```
 
-## Skenario Simulator
+Simulator mengirim payload yang sama dengan gateway RPi ke `POST /api/v1/readings` memakai Bearer Token.
 
-| Skenario | Suhu S2 | Suhu S1 |
-|---|---|---|
-| normal | ~27°C | ~25°C |
-| warming | ~29°C | ~26°C |
-| waspada | ~31°C | ~27°C |
-| anomali | ~34°C | ~28°C |
-| trouble | timeout/error | — |
+## Inject Data Historis
+
+```bash
+python inject_demo_data.py
+```
+
+`inject_demo_data.py` membaca `BACKEND_URL`, `GATEWAY_API_TOKEN`, dan `GATEWAY_ID` dari environment dengan fallback development lokal.

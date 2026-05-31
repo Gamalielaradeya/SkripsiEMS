@@ -1,5 +1,7 @@
 # 10 Test Plan — EMS LSTM Thermal Anomaly Monitoring System
 
+> **Catatan implementasi terbaru:** gunakan `15_Implementation_Runbook_Final.md` untuk command test aktual. Jalur fisik berada di `gateway-rpi/`; `gateway/` hanya simulator. Event SSE final mencakup `sensor.trouble` dan callback ML internal.
+
 **Judul Skripsi:** Prediksi Anomali Termal pada Environment Monitoring System Server Menggunakan Algoritma Long Short-Term Memory  
 **Jenis Dokumen:** Test Plan Document  
 **Versi:** 1.0  

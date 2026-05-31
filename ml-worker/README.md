@@ -17,6 +17,9 @@ python src/train_lstm.py
 
 # Inference (prediksi suhu S2 terbaru)
 python src/inference.py
+
+# Inference satu kali + callback backend
+python src/scheduler.py --once
 ```
 
 ## Pipeline
@@ -28,8 +31,11 @@ Dataset Loader → Preprocess → Windowing → Baseline → LSTM Train → Eval
 ## Output
 
 - Model disimpan di `models/lstm_model.keras`
-- Scaler disimpan di `models/scaler.pkl`
+- Feature scaler disimpan di `models/feature_scaler.pkl`
+- Target scaler disimpan di `models/target_scaler.pkl`
 - Hasil prediksi disimpan ke tabel `predictions`
 - Anomali disimpan ke tabel `anomaly_events`
 - Metrik disimpan ke tabel `model_metrics`
 - Baseline disimpan ke tabel `baseline_results`
+
+Inference membaca threshold runtime dari tabel `settings`. Setelah commit ke database, worker memanggil backend melalui `POST /api/v1/ml/inference-events` memakai `ML_WORKER_API_TOKEN` agar SSE dan Telegram diproses.

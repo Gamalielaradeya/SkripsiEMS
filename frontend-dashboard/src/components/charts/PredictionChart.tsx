@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Line } from 'react-chartjs-2'
 import { api } from '@/lib/api'
-import type { Prediction, SensorReading } from '@/types'
+import type { Prediction, Sensor, SensorReading, Setting } from '@/types'
 
 interface PredictionsResponse { predictions: Prediction[] }
 interface ReadingsResponse { readings: SensorReading[] }
@@ -9,15 +9,23 @@ interface ReadingsResponse { readings: SensorReading[] }
 export function PredictionChart() {
   const [predictions, setPredictions] = useState<Prediction[]>([])
   const [s2Readings, setS2Readings] = useState<SensorReading[]>([])
+  const [thresholds, setThresholds] = useState({ normal: 30, anomaly: 32 })
 
   const fetchData = useCallback(async () => {
     try {
-      const [pRes, rRes] = await Promise.all([
+      const [pRes, rRes, sensors, settings] = await Promise.all([
         api.predictionsHistory(30) as Promise<PredictionsResponse>,
         api.readingsHistory(60) as Promise<ReadingsResponse>,
+        api.sensors() as Promise<Sensor[]>,
+        api.settings() as Promise<Setting[]>,
       ])
+      const sensorS2 = sensors.find(sensor => sensor.sensor_code === 'S2')
       setPredictions((pRes?.predictions ?? []).reverse())
-      setS2Readings((rRes?.readings ?? []).filter(r => r.sensor_id !== undefined).reverse())
+      setS2Readings((rRes?.readings ?? []).filter(r => r.sensor_id === sensorS2?.id).reverse())
+      setThresholds({
+        normal: Number(settings.find(setting => setting.key === 'threshold_normal_max')?.value ?? 30),
+        anomaly: Number(settings.find(setting => setting.key === 'threshold_anomaly_min')?.value ?? 32),
+      })
     } catch {}
   }, [])
 
@@ -36,6 +44,25 @@ export function PredictionChart() {
     labels,
     datasets: [
       {
+        label: 'Aktual S2 (°C)',
+        data: predictions.map(prediction => {
+          const target = new Date(prediction.predicted_for).getTime()
+          const nearest = s2Readings.reduce<SensorReading | null>((best, reading) => {
+            if (!best) return reading
+            return Math.abs(new Date(reading.recorded_at).getTime() - target) <
+              Math.abs(new Date(best.recorded_at).getTime() - target) ? reading : best
+          }, null)
+          return nearest && Math.abs(new Date(nearest.recorded_at).getTime() - target) <= 2 * 60 * 1000
+            ? nearest.temperature
+            : null
+        }),
+        borderColor: '#fb923c',
+        backgroundColor: 'rgba(251,146,60,0.08)',
+        tension: 0.4,
+        pointRadius: 2,
+        borderWidth: 2,
+      },
+      {
         label: 'Prediksi S2 (°C)',
         data: predictions.map(p => p.predicted_temperature),
         borderColor: '#a78bfa',
@@ -45,6 +72,22 @@ export function PredictionChart() {
         pointRadius: 3,
         borderWidth: 2,
         borderDash: [5, 3],
+      },
+      {
+        label: `Batas Waspada ${thresholds.normal}°C`,
+        data: predictions.map(() => thresholds.normal),
+        borderColor: '#fbbf24',
+        pointRadius: 0,
+        borderWidth: 1,
+        borderDash: [4, 4],
+      },
+      {
+        label: `Batas Anomali ${thresholds.anomaly}°C`,
+        data: predictions.map(() => thresholds.anomaly),
+        borderColor: '#f87171',
+        pointRadius: 0,
+        borderWidth: 1,
+        borderDash: [4, 4],
       },
     ],
   }

@@ -15,8 +15,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from config import Config
 from db import get_connection
 from load_dataset import load_sensor_readings
-from preprocess import preprocess
-from windowing import FEATURE_COLS, TARGET_COL
+from windowing import FEATURE_COLS
 from classify_status import classify
 
 import joblib
@@ -29,18 +28,22 @@ log = logging.getLogger("ml.inference")
 def load_model_and_scaler(cfg: Config):
     """Load saved LSTM model dan scaler."""
     model_path  = os.path.join(cfg.MODEL_DIR, "lstm_model.keras")
-    scaler_path = os.path.join(cfg.SCALER_DIR, "scaler.pkl")
+    feature_scaler_path = os.path.join(cfg.SCALER_DIR, "feature_scaler.pkl")
+    target_scaler_path = os.path.join(cfg.SCALER_DIR, "target_scaler.pkl")
 
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Model tidak ditemukan: {model_path}. Jalankan train_lstm.py dulu.")
-    if not os.path.exists(scaler_path):
-        raise FileNotFoundError(f"Scaler tidak ditemukan: {scaler_path}.")
+    if not os.path.exists(feature_scaler_path):
+        raise FileNotFoundError(f"Feature scaler tidak ditemukan: {feature_scaler_path}.")
+    if not os.path.exists(target_scaler_path):
+        raise FileNotFoundError(f"Target scaler tidak ditemukan: {target_scaler_path}.")
 
     from tensorflow.keras.models import load_model
     model  = load_model(model_path)
-    scaler = joblib.load(scaler_path)
+    feature_scaler = joblib.load(feature_scaler_path)
+    target_scaler = joblib.load(target_scaler_path)
     log.info(f"Model loaded: {model_path}")
-    return model, scaler
+    return model, feature_scaler, target_scaler
 
 
 def get_latest_window(cfg: Config):
@@ -74,6 +77,40 @@ def get_latest_window(cfg: Config):
     return feature_data, last_ts
 
 
+def parse_runtime_thresholds(rows, default_normal, default_anomaly):
+    """Parse settings rows and reject an invalid threshold ordering."""
+    values = dict(rows)
+    threshold_normal = float(values.get("threshold_normal_max", default_normal))
+    threshold_anomaly = float(values.get("threshold_anomaly_min", default_anomaly))
+    if threshold_normal >= threshold_anomaly:
+        raise ValueError("threshold_normal_max must be lower than threshold_anomaly_min")
+    return threshold_normal, threshold_anomaly
+
+
+def load_runtime_thresholds(cfg: Config):
+    """Read editable thresholds from DB, with env defaults as fallback."""
+    defaults = (float(cfg.THRESHOLD_NORMAL_MAX), float(cfg.THRESHOLD_ANOMALY_MIN))
+    conn = None
+    cur = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT key, value
+            FROM settings
+            WHERE key IN ('threshold_normal_max', 'threshold_anomaly_min')
+        """)
+        return parse_runtime_thresholds(cur.fetchall(), *defaults)
+    except Exception as exc:
+        log.warning(f"Runtime thresholds unavailable, using env defaults: {exc}")
+        return defaults
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
 
 def run_inference():
     cfg = Config()
@@ -81,7 +118,7 @@ def run_inference():
 
     # Load model
     try:
-        model, scaler = load_model_and_scaler(cfg)
+        model, feature_scaler, target_scaler = load_model_and_scaler(cfg)
     except FileNotFoundError as e:
         log.error(str(e))
         return None
@@ -94,30 +131,18 @@ def run_inference():
         return None
 
     # Normalize
-    window_scaled = scaler.transform(window_raw)
+    window_scaled = feature_scaler.transform(window_raw)
     X = window_scaled[np.newaxis, :, :]  # shape: (1, window_size, 4)
 
     # Predict
-    pred_scaled = model.predict(X, verbose=0)[0][0]
-
-    # Cari index temperature_s2 di FEATURE_COLS
-    s2_idx = FEATURE_COLS.index("temperature_s2")  # = 2
-
-    # Inverse transform: set semua kolom ke mean scaled, lalu replace index s2
-    # Cara yang benar: buat row dengan nilai median, replace kolom target, inverse
-    dummy = np.zeros((1, len(FEATURE_COLS)))
-    # Isi kolom lain dengan nilai mean dari window (scaled) supaya inverse stabil
-    for i in range(len(FEATURE_COLS)):
-        dummy[0, i] = float(np.mean(window_scaled[:, i]))
-    dummy[0, s2_idx] = float(pred_scaled)
-    pred_temp = scaler.inverse_transform(dummy)[0][s2_idx]
+    pred_scaled = model.predict(X, verbose=0).reshape(-1, 1)
+    pred_temp = target_scaler.inverse_transform(pred_scaled)[0][0]
 
     # Clamp nilai yang tidak masuk akal (model masih baru, mungkin overfit)
     pred_temp = float(np.clip(pred_temp, 15.0, 60.0))
 
-    # Threshold dari config
-    threshold_normal = float(cfg.THRESHOLD_NORMAL_MAX)
-    threshold_anomaly = float(cfg.THRESHOLD_ANOMALY_MIN)
+    # Threshold editable dari DB, fallback ke env.
+    threshold_normal, threshold_anomaly = load_runtime_thresholds(cfg)
 
     status = classify(pred_temp, threshold_normal, threshold_anomaly)
     predicted_for = last_ts + timedelta(minutes=cfg.HORIZON_MINUTES) if last_ts else datetime.now(timezone.utc) + timedelta(minutes=cfg.HORIZON_MINUTES)
@@ -125,12 +150,42 @@ def run_inference():
     log.info(f"Prediksi S2: {pred_temp:.2f}C -> Status: {status} (untuk {cfg.HORIZON_MINUTES} menit ke depan)")
 
     # Simpan ke database
-    result = save_prediction_to_db(cfg, pred_temp, status, last_ts, predicted_for)
+    result = save_prediction_to_db(
+        cfg, pred_temp, status, threshold_normal, threshold_anomaly, last_ts, predicted_for
+    )
+    if result:
+        notify_backend(cfg, result["prediction_id"], result["anomaly_event_id"])
     return result
 
 
-def save_prediction_to_db(cfg, pred_temp, status, input_end_at, predicted_for):
+def notify_backend(cfg, prediction_id: int, anomaly_event_id: int) -> bool:
+    """Notify backend after DB commit so SSE and Telegram are processed."""
+    endpoint = f"{cfg.BACKEND_URL.rstrip('/')}/api/v1/ml/inference-events"
+    headers = {
+        "Authorization": f"Bearer {cfg.ML_WORKER_API_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "prediction_id": prediction_id,
+        "anomaly_event_id": anomaly_event_id,
+    }
+    try:
+        response = requests.post(endpoint, headers=headers, json=payload, timeout=10)
+        if response.status_code in (200, 202):
+            log.info(f"Backend callback OK: prediction_id={prediction_id}")
+            return True
+        log.warning(f"Backend callback failed: HTTP {response.status_code} {response.text[:200]}")
+    except requests.RequestException as exc:
+        log.warning(f"Backend callback unavailable: {exc}")
+    return False
+
+
+def save_prediction_to_db(
+    cfg, pred_temp, status, threshold_normal, threshold_anomaly, input_end_at, predicted_for
+):
     """Simpan prediksi dan anomaly event ke DB."""
+    conn = None
+    cur = None
     try:
         conn = get_connection()
         cur  = conn.cursor()
@@ -182,7 +237,7 @@ def save_prediction_to_db(cfg, pred_temp, status, input_end_at, predicted_for):
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """, (pred_id, sensor_s2_id, status, round(pred_temp, 4),
-              cfg.THRESHOLD_NORMAL_MAX, cfg.THRESHOLD_ANOMALY_MIN,
+              threshold_normal, threshold_anomaly,
               f"Prediksi suhu S2: {pred_temp:.2f}C ({status})", now))
         anomaly_id = cur.fetchone()[0]
 
@@ -191,6 +246,7 @@ def save_prediction_to_db(cfg, pred_temp, status, input_end_at, predicted_for):
 
         return {
             "prediction_id": pred_id,
+            "anomaly_event_id": anomaly_id,
             "predicted_temperature": round(pred_temp, 4),
             "status": status,
             "predicted_for": predicted_for.isoformat(),
@@ -201,10 +257,10 @@ def save_prediction_to_db(cfg, pred_temp, status, input_end_at, predicted_for):
         import traceback; traceback.print_exc()
         return None
     finally:
-        try: cur.close()
-        except: pass
-        try: conn.close()
-        except: pass
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
 
 if __name__ == "__main__":

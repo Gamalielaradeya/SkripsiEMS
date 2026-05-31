@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
+import { useSSE } from '@/lib/sse'
 import { formatTemp, formatDateTime } from '@/lib/utils'
 import { LoadingSpinner, EmptyState, ErrorState } from '@/components/ui'
 import type { Prediction } from '@/types'
@@ -23,6 +24,9 @@ export default function PredictionsPage() {
   }, [offset])
 
   useEffect(() => { fetchData() }, [fetchData])
+  useSSE(useCallback((event) => {
+    if (event === 'prediction.latest') fetchData()
+  }, [fetchData]))
 
   if (loading) return <LoadingSpinner size="lg" />
   if (error)   return <ErrorState message={error} onRetry={fetchData} />

@@ -14,8 +14,8 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
-	appconfig "github.com/ems-thermal/backend-go/internal/config"
 	"github.com/ems-thermal/backend-go/internal/config"
+	appconfig "github.com/ems-thermal/backend-go/internal/config"
 	"github.com/ems-thermal/backend-go/internal/handler"
 	"github.com/ems-thermal/backend-go/internal/middleware"
 	"github.com/ems-thermal/backend-go/internal/repository"
@@ -40,14 +40,15 @@ func main() {
 
 	// ── Init Repositories ─────────────────────────────────────────
 	gatewayRepo := repository.NewGatewayRepository(db)
-	sensorRepo  := repository.NewSensorRepository(db)
+	sensorRepo := repository.NewSensorRepository(db)
 	readingRepo := repository.NewReadingRepository(db)
-	predRepo    := repository.NewPredictionRepository(db)
+	predRepo := repository.NewPredictionRepository(db)
 	anomalyRepo := repository.NewAnomalyRepository(db)
-	notifRepo   := repository.NewNotificationRepository(db)
+	notifRepo := repository.NewNotificationRepository(db)
 	settingRepo := repository.NewSettingRepository(db)
+	layoutRepo := repository.NewLayoutRepository(db)
 	metricsRepo := repository.NewMetricsRepository(db)
-	syslogRepo  := repository.NewSystemLogRepository(db)
+	syslogRepo := repository.NewSystemLogRepository(db)
 
 	// ── Init SSE Hub ──────────────────────────────────────────────
 	hub := sse.NewHub()
@@ -56,16 +57,18 @@ func main() {
 	tgSvc := telegram.New(settingRepo)
 
 	// ── Init Handlers ─────────────────────────────────────────────
-	healthH    := handler.NewHealthHandler()
-	readingH   := handler.NewReadingHandler(gatewayRepo, sensorRepo, readingRepo, hub)
-	gatewayH   := handler.NewGatewayHandler(gatewayRepo)
-	dashboardH := handler.NewDashboardHandler(sensorRepo, readingRepo, predRepo, anomalyRepo, gatewayRepo)
-	predH      := handler.NewPredictionHandler(predRepo)
-	anomalyH   := handler.NewAnomalyHandler(anomalyRepo)
-	metricsH   := handler.NewMetricsHandler(metricsRepo)
-	settingsH  := handler.NewSettingsHandler(settingRepo)
-	notifH     := handler.NewNotificationHandler(notifRepo, tgSvc)
-	syslogH    := handler.NewSystemLogHandler(syslogRepo)
+	healthH := handler.NewHealthHandler()
+	readingH := handler.NewReadingHandler(gatewayRepo, sensorRepo, readingRepo, hub)
+	gatewayH := handler.NewGatewayHandler(gatewayRepo)
+	dashboardH := handler.NewDashboardHandler(sensorRepo, readingRepo, predRepo, anomalyRepo, gatewayRepo, settingRepo)
+	predH := handler.NewPredictionHandler(predRepo)
+	anomalyH := handler.NewAnomalyHandler(anomalyRepo)
+	metricsH := handler.NewMetricsHandler(metricsRepo)
+	settingsH := handler.NewSettingsHandler(settingRepo)
+	notifH := handler.NewNotificationHandler(notifRepo, tgSvc)
+	layoutH := handler.NewLayoutHandler(layoutRepo)
+	mlEventH := handler.NewMLInferenceHandler(predRepo, anomalyRepo, notifRepo, tgSvc, hub)
+	syslogH := handler.NewSystemLogHandler(syslogRepo)
 
 	// ── Router ────────────────────────────────────────────────────
 	r := chi.NewRouter()
@@ -81,11 +84,11 @@ func main() {
 	}))
 
 	// ── Public / Dashboard routes (no auth) ───────────────────────
-	r.Get("/api/v1/health",              healthH.Health)
-	r.Get("/api/v1/events",             hub.ServeHTTP)
-	r.Get("/api/v1/dashboard/summary",  dashboardH.Summary)
-	r.Get("/api/v1/readings/latest",    readingH.GetLatest)
-	r.Get("/api/v1/readings/history",   readingH.GetHistory)
+	r.Get("/api/v1/health", healthH.Health)
+	r.Get("/api/v1/events", hub.ServeHTTP)
+	r.Get("/api/v1/dashboard/summary", dashboardH.Summary)
+	r.Get("/api/v1/readings/latest", readingH.GetLatest)
+	r.Get("/api/v1/readings/history", readingH.GetHistory)
 	r.Get("/api/v1/sensors", func(w http.ResponseWriter, r *http.Request) {
 		sensors, err := sensorRepo.ListAll(r.Context())
 		if err != nil {
@@ -95,24 +98,33 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(sensors)
 	})
-	r.Get("/api/v1/predictions/latest",   predH.GetLatest)
-	r.Get("/api/v1/predictions/history",  predH.GetHistory)
-	r.Get("/api/v1/anomalies",            anomalyH.GetList)
-	r.Get("/api/v1/anomalies/latest",     anomalyH.GetLatest)
+	r.Get("/api/v1/predictions/latest", predH.GetLatest)
+	r.Get("/api/v1/predictions/history", predH.GetHistory)
+	r.Get("/api/v1/anomalies", anomalyH.GetList)
+	r.Get("/api/v1/anomalies/latest", anomalyH.GetLatest)
 	r.Get("/api/v1/model-metrics/latest", metricsH.GetLatestMetrics)
-	r.Get("/api/v1/baselines/latest",     metricsH.GetLatestBaselines)
-	r.Get("/api/v1/settings",             settingsH.GetAll)
-	r.Put("/api/v1/settings/{key}",       settingsH.Update)
-	r.Get("/api/v1/notifications",        notifH.GetList)
-	r.Post("/api/v1/notifications/test",  notifH.SendTest)
-	r.Get("/api/v1/system-logs",          syslogH.GetList)
+	r.Get("/api/v1/baselines/latest", metricsH.GetLatestBaselines)
+	r.Get("/api/v1/settings", settingsH.GetAll)
+	r.Put("/api/v1/settings/{key}", settingsH.Update)
+	r.Get("/api/v1/notifications", notifH.GetList)
+	r.Post("/api/v1/notifications/test", notifH.SendTest)
+	r.Get("/api/v1/system-logs", syslogH.GetList)
+	r.Get("/api/v1/layout", layoutH.GetActive)
+	r.Put("/api/v1/layout/devices/{sensorCode}", layoutH.UpdateDevicePosition)
+	r.Delete("/api/v1/layout/devices/{sensorCode}", layoutH.DeleteDevicePosition)
 
 	// ── Gateway routes (requires Bearer token) ────────────────────
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.BearerAuth(cfg.App.GatewayAPIToken))
-		r.Post("/api/v1/readings",        readingH.CreateReading)
-		r.Post("/api/v1/readings/batch",  readingH.CreateReading)
-		r.Post("/api/v1/gateway/status",  gatewayH.UpdateStatus)
+		r.Post("/api/v1/readings", readingH.CreateReading)
+		r.Post("/api/v1/readings/batch", readingH.CreateReading)
+		r.Post("/api/v1/gateway/status", gatewayH.UpdateStatus)
+	})
+
+	// ── ML Worker routes (requires worker Bearer token) ───────────────────────
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.BearerAuth(cfg.App.MLWorkerAPIToken))
+		r.Post("/api/v1/ml/inference-events", mlEventH.ProcessEvent)
 	})
 
 	// ── HTTP Server ───────────────────────────────────────────────

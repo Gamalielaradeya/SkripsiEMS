@@ -3,7 +3,8 @@ import { useState, useCallback, useEffect } from 'react'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
 import { useSSE } from '@/lib/sse'
-import type { ThermalStatus } from '@/types'
+import { api } from '@/lib/api'
+import type { DashboardSummary, ThermalStatus } from '@/types'
 
 import DashboardPage     from '@/pages/DashboardPage'
 import ReadingsPage      from '@/pages/ReadingsPage'
@@ -35,10 +36,20 @@ export default function App() {
     })
   }, [])
 
+  useEffect(() => {
+    api.dashboardSummary()
+      .then(result => setThermalStatus((result as DashboardSummary).thermal_status))
+      .catch(() => setThermalStatus('trouble'))
+  }, [refreshKey])
+
   useSSE(useCallback((event, data) => {
     if (event === 'prediction.latest') {
       const p = data as { thermal_status?: ThermalStatus }
       if (p?.thermal_status) setThermalStatus(p.thermal_status)
+    }
+    if (event === 'sensor.trouble') setThermalStatus('trouble')
+    if (['reading.latest', 'sensor.trouble', 'prediction.latest', 'anomaly.created', 'notification.sent'].includes(event)) {
+      setRefreshKey(k => k + 1)
     }
   }, []), useCallback((conn: boolean) => {
     setConnected(conn)
@@ -59,7 +70,7 @@ export default function App() {
         onToggleTheme={toggleTheme}
       />
 
-      <main className="ml-60 pt-20 pb-8 px-6 min-h-screen" key={refreshKey}>
+      <main className="md:ml-60 pt-20 pb-24 md:pb-8 px-4 md:px-6 min-h-screen" key={refreshKey}>
         <Routes>
           <Route path="/"              element={<DashboardPage />} />
           <Route path="/readings"      element={<ReadingsPage />} />

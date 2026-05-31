@@ -4,6 +4,7 @@ Kirim 200 data points dengan variasi skenario untuk demo dashboard.
 Jalankan: python inject_demo_data.py
 """
 
+import os
 import sys
 import time
 import math
@@ -11,9 +12,9 @@ import random
 import requests
 from datetime import datetime, timezone, timedelta
 
-BACKEND_URL = "http://localhost:8080"
-API_TOKEN   = "dev-token-change-in-production"
-GATEWAY_ID  = "raspi-gateway-01"
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8080")
+API_TOKEN   = os.getenv("GATEWAY_API_TOKEN", "dev-token-change-in-production")
+GATEWAY_ID  = os.getenv("GATEWAY_ID", "raspi-gateway-01")
 
 HEADERS = {
     "Authorization": f"Bearer {API_TOKEN}",
@@ -105,7 +106,7 @@ def main():
 
         time.sleep(0.05)  # 50ms delay to avoid hammering backend
 
-    print(f"\n✅ Selesai! {success}/{total_points} data berhasil dikirim.")
+    print(f"\n[OK] Selesai! {success}/{total_points} data berhasil dikirim.")
     print("Refresh dashboard untuk melihat grafik historis 5 jam.")
 
 

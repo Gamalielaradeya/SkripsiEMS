@@ -63,10 +63,12 @@ async def _poll_loop(get_config_fn, reader_factory, sender_factory):
 
             ok_readings = [r for r in readings if r.ok]
 
-            if not ok_readings:
+            if len(ok_readings) != len(readings):
                 poller_state["error_count"] += 1
-                poller_state["last_status"] = "Semua sensor error — skip"
-                log.warning("Semua sensor error, tidak ada data")
+
+            if gather_mode and not ok_readings:
+                poller_state["last_status"] = "Semua sensor error - skip gather"
+                log.warning("Semua sensor error, tidak ada data untuk gather")
 
             elif gather_mode:
                 # ── GATHER MODE: simpan ke SQLite ──────────────────────────
@@ -83,7 +85,7 @@ async def _poll_loop(get_config_fn, reader_factory, sender_factory):
             else:
                 # ── FORWARD MODE: fire-and-forget ke EMS ──────────────────
                 sender  = sender_factory(cfg)
-                payload = sender.build_payload(ok_readings, cfg["gateway"]["id"])
+                payload = sender.build_payload(readings, cfg["gateway"]["id"])
                 ok, msg = await sender.send_async(payload)
                 if ok:
                     poller_state["sent_count"] += 1

@@ -117,6 +117,33 @@ export interface Setting {
 
 // ── System Log Types ───────────────────────────────────────────────────────
 
+export interface Layout {
+  id: number
+  name: string
+  description: string | null
+  image_path: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface LayoutDevice {
+  id: number
+  layout_id: number
+  sensor_id: number
+  sensor_code: string
+  sensor_role: string
+  status: string
+  pos_x: number
+  pos_y: number
+  label: string
+}
+
+export interface ActiveLayoutResponse {
+  layout: Layout
+  devices: LayoutDevice[]
+}
+
 export interface SystemLog {
   id: number
   source: string

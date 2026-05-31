@@ -24,12 +24,12 @@ export interface SensorNode {
   status: ThermalStatus
 }
 
-interface PlacedPosition {
+export interface PlacedPosition {
   x: number  // percentage 0–100
   y: number
 }
 
-type PositionMap = Record<string, PlacedPosition | null>
+export type PositionMap = Record<string, PlacedPosition | null>
 
 interface ContextMenuState {
   visible: boolean
@@ -75,9 +75,12 @@ function SensorPin({ node, pos, editMode, iconSize, onMove, onRemove, containerR
     ? 'bg-green-500 shadow-green-500/60 ring-green-400/30'
     : node.status === 'waspada'
       ? 'bg-amber-500 shadow-amber-500/60 ring-amber-400/30'
-      : 'bg-red-500 shadow-red-500/60 ring-red-400/30'
+      : node.status === 'anomali'
+        ? 'bg-red-500 shadow-red-500/60 ring-red-400/30'
+        : 'bg-gray-500 shadow-gray-500/60 ring-gray-400/30'
   const tempColor = node.status === 'normal' ? 'text-green-400'
-    : node.status === 'waspada' ? 'text-amber-400' : 'text-red-400'
+    : node.status === 'waspada' ? 'text-amber-400'
+      : node.status === 'anomali' ? 'text-red-400' : 'text-gray-400'
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!editMode) return
@@ -212,15 +215,19 @@ interface SensorLayoutMapProps {
   editMode?: boolean
   height?: number
   className?: string
+  initialPositions?: PositionMap
+  onSavePositions?: (positions: PositionMap) => Promise<void>
 }
 
 const MIN_ZOOM = 50, MAX_ZOOM = 300, ZOOM_STEP = 25
 
-export function SensorLayoutMap({ sensors, editMode = false, height = 340, className }: SensorLayoutMapProps) {
+export function SensorLayoutMap({ sensors, editMode = false, height = 340, className, initialPositions, onSavePositions }: SensorLayoutMapProps) {
   const containerRef = useRef<HTMLDivElement>(null!)
-  const [positions, setPositions] = useState<PositionMap>(loadPositions)
+  const [positions, setPositions] = useState<PositionMap>(() => initialPositions ?? loadPositions())
   const [floorplan, setFloorplan] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY_FLOORPLAN))
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [zoom, setZoom] = useState(100)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [iconSize, setIconSize] = useState(loadIconSize)
@@ -232,7 +239,9 @@ export function SensorLayoutMap({ sensors, editMode = false, height = 340, class
   const isPanning = useRef(false)
   const panStart = useRef({ mx: 0, my: 0, px: 0, py: 0 })
 
-  useEffect(() => { setPositions(loadPositions()) }, [])
+  useEffect(() => {
+    if (initialPositions) setPositions(initialPositions)
+  }, [initialPositions])
 
   const placedSensors = sensors.filter(s => positions[s.id] != null)
   const unplacedSensors = sensors.filter(s => positions[s.id] == null)
@@ -243,14 +252,23 @@ export function SensorLayoutMap({ sensors, editMode = false, height = 340, class
     setPositions(prev => ({ ...prev, [sensorId]: { x: contextMenu.mapX, y: contextMenu.mapY } }))
   }, [contextMenu.mapX, contextMenu.mapY])
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setSaving(true)
+    setSaveError(null)
     persistPositions(positions)
     localStorage.setItem(STORAGE_KEY_ICON_SIZE, String(iconSize))
     localStorage.setItem('ems_layout_bgmode', bgMode)
     if (floorplan) localStorage.setItem(STORAGE_KEY_FLOORPLAN, floorplan)
     else localStorage.removeItem(STORAGE_KEY_FLOORPLAN)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+    try {
+      await onSavePositions?.(positions)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch {
+      setSaveError('Gagal sinkron ke server. Draft tetap tersimpan di browser.')
+    } finally {
+      setSaving(false)
+    }
   }
   const handleReset = () => {
     const empty: PositionMap = {}
@@ -354,12 +372,13 @@ export function SensorLayoutMap({ sensors, editMode = false, height = 340, class
               </button>
             </div>
             <button onClick={handleReset} className="btn btn-ghost text-xs flex items-center gap-1.5"><RotateCcw className="w-3.5 h-3.5" /> Reset</button>
-            <button onClick={handleSave} className={cn('btn text-xs flex items-center gap-1.5 transition-all', saved ? 'btn-ghost text-green-400' : 'btn-primary')}>
-              <Save className="w-3.5 h-3.5" />{saved ? '✓ Tersimpan!' : 'Simpan Layout'}
+            <button onClick={handleSave} disabled={saving} className={cn('btn text-xs flex items-center gap-1.5 transition-all', saved ? 'btn-ghost text-green-400' : 'btn-primary')}>
+              <Save className="w-3.5 h-3.5" />{saving ? 'Menyimpan...' : saved ? 'Tersimpan' : 'Simpan Layout'}
             </button>
           </div>
         </div>
       )}
+      {saveError && <p className="text-xs text-red-400">{saveError}</p>}
 
       {/* Map wrapper — overflow-hidden prevents zoom from leaking out */}
       <div className="relative overflow-hidden rounded-xl" style={{ height }}>
@@ -422,7 +441,7 @@ export function SensorLayoutMap({ sensors, editMode = false, height = 340, class
 
           {/* Legend */}
           <div className="absolute bottom-3 left-12 flex gap-3 bg-gray-900/80 backdrop-blur rounded-lg px-3 py-1.5 border border-gray-700">
-            {(['normal', 'waspada', 'anomali'] as ThermalStatus[]).map(s => (
+            {(['normal', 'waspada', 'anomali', 'trouble'] as ThermalStatus[]).map(s => (
               <div key={s} className="flex items-center gap-1.5">
                 <span className={cn('w-2 h-2 rounded-full', statusDot(s))} />
                 <span className="text-[10px] text-gray-500 capitalize">{s}</span>

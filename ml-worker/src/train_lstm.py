@@ -12,7 +12,7 @@ from config import Config
 from db import get_connection
 from load_dataset import load_sensor_readings
 from preprocess import preprocess, remove_outliers
-from windowing import normalize_and_window, chronological_split
+from windowing import build_windows, chronological_split, fit_and_scale_windows
 from baseline import persistence_model, moving_average_model
 from metrics import evaluate
 from model_lstm import build_lstm, train, save_model
@@ -25,7 +25,8 @@ def run():
     cfg = Config()
     os.makedirs(cfg.MODEL_DIR, exist_ok=True)
     model_path  = os.path.join(cfg.MODEL_DIR, "lstm_model.keras")
-    scaler_path = os.path.join(cfg.SCALER_DIR, "scaler.pkl")
+    feature_scaler_path = os.path.join(cfg.SCALER_DIR, "feature_scaler.pkl")
+    target_scaler_path = os.path.join(cfg.SCALER_DIR, "target_scaler.pkl")
 
     log.info("=== EMS LSTM Training Pipeline ===")
     df = load_sensor_readings()
@@ -35,13 +36,21 @@ def run():
 
     df = preprocess(df, horizon_minutes=cfg.HORIZON_MINUTES)
     df = remove_outliers(df)
-    X, y, scaler = normalize_and_window(df, window_size=cfg.WINDOW_SIZE, scaler_path=scaler_path, fit_scaler=True)
-    X_train, X_test, y_train, y_test = chronological_split(X, y, test_ratio=0.2)
+    X, y = build_windows(df, window_size=cfg.WINDOW_SIZE)
+    X_train_raw, X_test_raw, y_train_raw, y_test_raw = chronological_split(X, y, test_ratio=0.2)
+    X_train, X_test, y_train, _, _, target_scaler = fit_and_scale_windows(
+        X_train_raw,
+        X_test_raw,
+        y_train_raw,
+        y_test_raw,
+        feature_scaler_path=feature_scaler_path,
+        target_scaler_path=target_scaler_path,
+    )
 
     log.info("--- Evaluating Baselines ---")
     baseline_metrics = {
-        "persistence":    evaluate(y_test, persistence_model(y_test), "Persistence"),
-        "moving_average": evaluate(y_test, moving_average_model(y_test), "Moving Average"),
+        "persistence":    evaluate(y_test_raw, persistence_model(X_test_raw), "Persistence"),
+        "moving_average": evaluate(y_test_raw, moving_average_model(X_test_raw), "Moving Average"),
     }
 
     log.info("--- Training LSTM ---")
@@ -51,8 +60,9 @@ def run():
           checkpoint_path=model_path)
 
     log.info("--- Evaluating LSTM ---")
-    y_pred_lstm = model.predict(X_test, verbose=0).flatten()
-    lstm_metrics = evaluate(y_test, y_pred_lstm, "LSTM")
+    y_pred_scaled = model.predict(X_test, verbose=0).reshape(-1, 1)
+    y_pred_lstm = target_scaler.inverse_transform(y_pred_scaled).reshape(-1)
+    lstm_metrics = evaluate(y_test_raw, y_pred_lstm, "LSTM")
     save_model(model, model_path)
 
     _save_metrics_to_db(cfg, lstm_metrics, baseline_metrics, len(X_train), len(X_test))

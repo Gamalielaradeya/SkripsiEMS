@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"sync"
 	"time"
 
@@ -16,6 +17,14 @@ type Service struct {
 	cooldown    time.Duration
 	lastSentAt  map[string]time.Time
 	mu          sync.Mutex
+}
+
+type AlertResult struct {
+	Recipient    *string
+	Message      string
+	Status       string
+	SentAt       *time.Time
+	ErrorMessage *string
 }
 
 func New(settingRepo *repository.SettingRepository) *Service {
@@ -61,8 +70,10 @@ func (s *Service) getBotAndConfig() (*tgbotapi.BotAPI, int64, bool, error) {
 		return nil, 0, false, nil
 	}
 
-	var chatID int64
-	fmt.Sscanf(chatIDStr, "%d", &chatID)
+	chatID, err := strconv.ParseInt(chatIDStr, 10, 64)
+	if err != nil {
+		return nil, 0, false, fmt.Errorf("telegram_chat_id invalid: %w", err)
+	}
 
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
@@ -72,30 +83,8 @@ func (s *Service) getBotAndConfig() (*tgbotapi.BotAPI, int64, bool, error) {
 	return bot, chatID, enabled, nil
 }
 
-
-// SendAlert sends a thermal alert message with cooldown
-func (s *Service) SendAlert(status, predictedTemp, predictedFor, detectedAt string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	bot, chatID, enabled, err := s.getBotAndConfig()
-	if err != nil {
-		log.Printf("[telegram] Error loading config: %v", err)
-		return err
-	}
-	if !enabled || bot == nil {
-		return nil
-	}
-
-	// Check cooldown per status
-	if last, ok := s.lastSentAt[status]; ok {
-		if time.Since(last) < s.cooldown {
-			log.Printf("[telegram] Cooldown aktif untuk status %s, skip.", status)
-			return nil
-		}
-	}
-
-	msg := fmt.Sprintf(`[EMS THERMAL ALERT]
+func alertMessage(status, predictedTemp, predictedFor, detectedAt string) string {
+	return fmt.Sprintf(`[EMS THERMAL ALERT]
 
 Status        : %s
 Sensor Acuan  : S2 - Hotspot/Exhaust
@@ -107,17 +96,59 @@ Waktu Deteksi : %s
 Sistem memprediksi suhu melewati batas operasional.
 Silakan cek dashboard EMS untuk tindakan pemantauan.`,
 		status, predictedTemp, predictedFor, detectedAt)
+}
 
-	m := tgbotapi.NewMessage(chatID, msg)
+// SendAlert sends a thermal alert message with cooldown
+func (s *Service) SendAlert(status, predictedTemp, predictedFor, detectedAt string) AlertResult {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	result := AlertResult{
+		Message: alertMessage(status, predictedTemp, predictedFor, detectedAt),
+		Status:  "skipped",
+	}
+	bot, chatID, enabled, err := s.getBotAndConfig()
+	if err != nil {
+		log.Printf("[telegram] Error loading config: %v", err)
+		result.Status = "failed"
+		errMsg := err.Error()
+		result.ErrorMessage = &errMsg
+		return result
+	}
+	if !enabled || bot == nil {
+		errMsg := "telegram disabled or token empty"
+		result.ErrorMessage = &errMsg
+		return result
+	}
+	recipient := strconv.FormatInt(chatID, 10)
+	result.Recipient = &recipient
+
+	// Check cooldown per status
+	if last, ok := s.lastSentAt[status]; ok {
+		if time.Since(last) < s.cooldown {
+			log.Printf("[telegram] Cooldown aktif untuk status %s, skip.", status)
+			errMsg := "telegram cooldown active"
+			result.ErrorMessage = &errMsg
+			return result
+		}
+	}
+
+	m := tgbotapi.NewMessage(chatID, result.Message)
 	_, err = bot.Send(m)
 	if err != nil {
 		log.Printf("[telegram] Send failed: %v", err)
-		return err
+		result.Status = "failed"
+		errMsg := err.Error()
+		result.ErrorMessage = &errMsg
+		return result
 	}
 
-	s.lastSentAt[status] = time.Now()
+	now := time.Now()
+	s.lastSentAt[status] = now
+	result.Status = "sent"
+	result.SentAt = &now
 	log.Printf("[telegram] Alert sent: %s", status)
-	return nil
+	return result
 }
 
 // SendTest sends a test message

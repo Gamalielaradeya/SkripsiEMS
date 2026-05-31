@@ -14,9 +14,9 @@ def classify(predicted_temp: float, threshold_normal_max: float, threshold_anoma
     Returns:
         'normal' | 'waspada' | 'anomali'
     """
-    if predicted_temp <= threshold_normal_max:
+    if predicted_temp < threshold_normal_max:
         return "normal"
-    elif predicted_temp < threshold_anomaly_min:
+    elif predicted_temp <= threshold_anomaly_min:
         return "waspada"
     else:
         return "anomali"

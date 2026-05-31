@@ -50,21 +50,21 @@ type SensorReading struct {
 
 // ModelVersion represents a trained LSTM model
 type ModelVersion struct {
-	ID                       int64           `json:"id"`
-	ModelName                string          `json:"model_name"`
-	ModelType                string          `json:"model_type"`
-	Version                  string          `json:"version"`
-	Algorithm                string          `json:"algorithm"`
-	FeatureColumns           json.RawMessage `json:"feature_columns"`
-	TargetColumn             string          `json:"target_column"`
-	WindowSize               int             `json:"window_size"`
-	HorizonMinutes           int             `json:"horizon_minutes"`
-	SamplingIntervalSeconds  int             `json:"sampling_interval_seconds"`
-	ModelPath                *string         `json:"model_path"`
-	ScalerPath               *string         `json:"scaler_path"`
-	Parameters               json.RawMessage `json:"parameters,omitempty"`
-	TrainedAt                *time.Time      `json:"trained_at"`
-	CreatedAt                time.Time       `json:"created_at"`
+	ID                      int64           `json:"id"`
+	ModelName               string          `json:"model_name"`
+	ModelType               string          `json:"model_type"`
+	Version                 string          `json:"version"`
+	Algorithm               string          `json:"algorithm"`
+	FeatureColumns          json.RawMessage `json:"feature_columns"`
+	TargetColumn            string          `json:"target_column"`
+	WindowSize              int             `json:"window_size"`
+	HorizonMinutes          int             `json:"horizon_minutes"`
+	SamplingIntervalSeconds int             `json:"sampling_interval_seconds"`
+	ModelPath               *string         `json:"model_path"`
+	ScalerPath              *string         `json:"scaler_path"`
+	Parameters              json.RawMessage `json:"parameters,omitempty"`
+	TrainedAt               *time.Time      `json:"trained_at"`
+	CreatedAt               time.Time       `json:"created_at"`
 }
 
 // Prediction represents one LSTM prediction result
@@ -84,44 +84,44 @@ type Prediction struct {
 
 // AnomalyEvent represents a thermal status classification result
 type AnomalyEvent struct {
-	ID                   int64      `json:"id"`
-	PredictionID         int64      `json:"prediction_id"`
-	SensorID             int64      `json:"sensor_id"`
-	Status               string     `json:"status"`
-	PredictedTemperature float64    `json:"predicted_temperature"`
-	ActualTemperature    *float64   `json:"actual_temperature"`
-	ThresholdNormalMax   float64    `json:"threshold_normal_max"`
-	ThresholdAnomalyMin  float64    `json:"threshold_anomaly_min"`
-	Description          string     `json:"description"`
-	DetectedAt           time.Time  `json:"detected_at"`
-	CreatedAt            time.Time  `json:"created_at"`
+	ID                   int64     `json:"id"`
+	PredictionID         int64     `json:"prediction_id"`
+	SensorID             int64     `json:"sensor_id"`
+	Status               string    `json:"status"`
+	PredictedTemperature float64   `json:"predicted_temperature"`
+	ActualTemperature    *float64  `json:"actual_temperature"`
+	ThresholdNormalMax   float64   `json:"threshold_normal_max"`
+	ThresholdAnomalyMin  float64   `json:"threshold_anomaly_min"`
+	Description          string    `json:"description"`
+	DetectedAt           time.Time `json:"detected_at"`
+	CreatedAt            time.Time `json:"created_at"`
 }
 
 // ModelMetrics represents evaluation results
 type ModelMetrics struct {
-	ID              int64      `json:"id"`
-	ModelVersionID  int64      `json:"model_version_id"`
-	DatasetStartAt  *time.Time `json:"dataset_start_at"`
-	DatasetEndAt    *time.Time `json:"dataset_end_at"`
-	TrainSize       *int       `json:"train_size"`
-	TestSize        *int       `json:"test_size"`
-	RMSE            float64    `json:"rmse"`
-	MAE             float64    `json:"mae"`
-	MAPE            float64    `json:"mape"`
-	CreatedAt       time.Time  `json:"created_at"`
+	ID             int64      `json:"id"`
+	ModelVersionID int64      `json:"model_version_id"`
+	DatasetStartAt *time.Time `json:"dataset_start_at"`
+	DatasetEndAt   *time.Time `json:"dataset_end_at"`
+	TrainSize      *int       `json:"train_size"`
+	TestSize       *int       `json:"test_size"`
+	RMSE           float64    `json:"rmse"`
+	MAE            float64    `json:"mae"`
+	MAPE           float64    `json:"mape"`
+	CreatedAt      time.Time  `json:"created_at"`
 }
 
 // BaselineResult represents persistence/moving_average baseline result
 type BaselineResult struct {
-	ID              int64      `json:"id"`
-	ModelVersionID  *int64     `json:"model_version_id"`
-	BaselineType    string     `json:"baseline_type"`
-	DatasetStartAt  *time.Time `json:"dataset_start_at"`
-	DatasetEndAt    *time.Time `json:"dataset_end_at"`
-	RMSE            float64    `json:"rmse"`
-	MAE             float64    `json:"mae"`
-	MAPE            float64    `json:"mape"`
-	CreatedAt       time.Time  `json:"created_at"`
+	ID             int64      `json:"id"`
+	ModelVersionID *int64     `json:"model_version_id"`
+	BaselineType   string     `json:"baseline_type"`
+	DatasetStartAt *time.Time `json:"dataset_start_at"`
+	DatasetEndAt   *time.Time `json:"dataset_end_at"`
+	RMSE           float64    `json:"rmse"`
+	MAE            float64    `json:"mae"`
+	MAPE           float64    `json:"mape"`
+	CreatedAt      time.Time  `json:"created_at"`
 }
 
 // NotificationLog represents a Telegram notification attempt
@@ -180,6 +180,23 @@ type LayoutDevice struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+type LayoutDeviceView struct {
+	ID         int64   `json:"id"`
+	LayoutID   int64   `json:"layout_id"`
+	SensorID   int64   `json:"sensor_id"`
+	SensorCode string  `json:"sensor_code"`
+	SensorRole string  `json:"sensor_role"`
+	Status     string  `json:"status"`
+	PosX       float64 `json:"pos_x"`
+	PosY       float64 `json:"pos_y"`
+	Label      string  `json:"label"`
+}
+
+type ActiveLayoutResponse struct {
+	Layout  *Layout            `json:"layout"`
+	Devices []LayoutDeviceView `json:"devices"`
+}
+
 // StatusIcon represents icon for a thermal status
 type StatusIcon struct {
 	ID          int64     `json:"id"`
@@ -193,17 +210,18 @@ type StatusIcon struct {
 
 // GatewayReadingRequest is what the gateway POSTs
 type GatewayReadingRequest struct {
-	GatewayID  string           `json:"gateway_id"`
-	RecordedAt time.Time        `json:"recorded_at"`
-	Source     string           `json:"source"`
+	GatewayID  string              `json:"gateway_id"`
+	RecordedAt time.Time           `json:"recorded_at"`
+	Source     string              `json:"source"`
 	Readings   []SensorReadingItem `json:"readings"`
 }
 
 type SensorReadingItem struct {
-	SensorCode  string  `json:"sensor_code"`
-	SensorRole  string  `json:"sensor_role"`
-	Temperature float64 `json:"temperature"`
-	Humidity    float64 `json:"humidity"`
+	SensorCode    string  `json:"sensor_code"`
+	SensorRole    string  `json:"sensor_role"`
+	Temperature   float64 `json:"temperature"`
+	Humidity      float64 `json:"humidity"`
+	QualityStatus string  `json:"quality_status,omitempty"`
 }
 
 // GatewayStatusRequest is what the gateway POSTs for status update
@@ -213,14 +231,26 @@ type GatewayStatusRequest struct {
 	IPAddress string `json:"ip_address,omitempty"`
 }
 
+// MLInferenceEventRequest notifies backend after ML worker commits inference results.
+type MLInferenceEventRequest struct {
+	PredictionID   int64 `json:"prediction_id"`
+	AnomalyEventID int64 `json:"anomaly_event_id"`
+}
+
+type UpdateLayoutDeviceRequest struct {
+	PosX  float64 `json:"pos_x"`
+	PosY  float64 `json:"pos_y"`
+	Label string  `json:"label"`
+}
+
 // DashboardSummary is the main dashboard response
 type DashboardSummary struct {
-	S1Latest        *LatestSensorData `json:"s1_latest"`
-	S2Latest        *LatestSensorData `json:"s2_latest"`
-	LatestPrediction *Prediction      `json:"latest_prediction"`
-	ThermalStatus   string            `json:"thermal_status"`
-	GatewayStatus   string            `json:"gateway_status"`
-	LastUpdatedAt   *time.Time        `json:"last_updated_at"`
+	S1Latest         *LatestSensorData `json:"s1_latest"`
+	S2Latest         *LatestSensorData `json:"s2_latest"`
+	LatestPrediction *Prediction       `json:"latest_prediction"`
+	ThermalStatus    string            `json:"thermal_status"`
+	GatewayStatus    string            `json:"gateway_status"`
+	LastUpdatedAt    *time.Time        `json:"last_updated_at"`
 }
 
 type LatestSensorData struct {

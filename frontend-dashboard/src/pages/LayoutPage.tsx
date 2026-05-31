@@ -4,26 +4,38 @@ import { api } from '@/lib/api'
 import { useSSE } from '@/lib/sse'
 import { LoadingSpinner } from '@/components/ui'
 import { SensorLayoutMap } from '@/components/layout/SensorLayoutMap'
-import type { SensorNode } from '@/components/layout/SensorLayoutMap'
-import type { DashboardSummary } from '@/types'
+import type { PositionMap, SensorNode } from '@/components/layout/SensorLayoutMap'
+import type { ActiveLayoutResponse, DashboardSummary } from '@/types'
 
 export default function LayoutPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [editMode, setEditMode] = useState(false)
+  const [positions, setPositions] = useState<PositionMap | undefined>()
+  const [layoutError, setLayoutError] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     try {
-      const sum = await api.dashboardSummary() as DashboardSummary
+      const [sum, layout] = await Promise.all([
+        api.dashboardSummary() as Promise<DashboardSummary>,
+        api.layout() as Promise<ActiveLayoutResponse>,
+      ])
       setSummary(sum)
-    } catch { /* ignore */ }
+      setPositions(Object.fromEntries(layout.devices.map(d => [
+        d.sensor_code,
+        { x: d.pos_x, y: d.pos_y },
+      ])))
+      setLayoutError(null)
+    } catch {
+      setLayoutError('Layout server tidak tersedia. Posisi draft browser tetap dapat digunakan.')
+    }
     finally { setLoading(false) }
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
 
   useSSE(useCallback((event) => {
-    if (event === 'reading.latest' || event === 'prediction.latest') {
+    if (event === 'reading.latest' || event === 'sensor.trouble' || event === 'prediction.latest') {
       fetchData()
     }
   }, [fetchData]))
@@ -48,6 +60,16 @@ export default function LayoutPage() {
       status: thermalStatus as SensorNode['status'],
     },
   ]
+
+  const savePositions = useCallback(async (next: PositionMap) => {
+    await Promise.all(sensors.map(sensor => {
+      const position = next[sensor.id]
+      return position
+        ? api.layoutDeviceUpdate(sensor.id, position.x, position.y, sensor.label)
+        : api.layoutDeviceDelete(sensor.id)
+    }))
+    setPositions(next)
+  }, [sensors])
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in h-full">
@@ -90,9 +112,12 @@ export default function LayoutPage() {
             sensors={sensors}
             editMode={editMode}
             height={520}
+            initialPositions={positions}
+            onSavePositions={savePositions}
           />
         </div>
       )}
+      {layoutError && <p className="text-xs text-amber-400">{layoutError}</p>}
 
       {/* Info note */}
       <div className="flex items-start gap-2 p-3 bg-ems-500/5 border border-ems-500/20 rounded-xl">
@@ -101,7 +126,7 @@ export default function LayoutPage() {
           Klik <strong className="text-gray-300">Edit Location</strong> untuk mengaktifkan mode edit. 
           Lalu <strong className="text-gray-300">klik kanan</strong> di area denah untuk meletakkan sensor dari <em>Device List</em>. 
           Seret ikon untuk memindahkan posisi. Klik <strong className="text-gray-300">✕</strong> di sudut ikon untuk melepasnya kembali ke Device List.
-          Posisi tersimpan di browser dan ter-sinkron ke mini-map di Dashboard.
+          Posisi disimpan ke database EMS. Browser menyimpan draft lokal bila server sedang tidak tersedia.
         </p>
       </div>
     </div>

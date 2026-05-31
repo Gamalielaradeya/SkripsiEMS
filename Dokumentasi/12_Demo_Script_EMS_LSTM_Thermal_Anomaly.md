@@ -1,5 +1,7 @@
 # 12 Demo Script — EMS LSTM Thermal Anomaly Monitoring System
 
+> **Catatan implementasi terbaru:** gunakan flow ringkas pada `15_Implementation_Runbook_Final.md`. Command inference aktual adalah `python src/scheduler.py --once`; hardware fisik dijalankan dari `gateway-rpi/`, bukan `gateway/src/main.py --mode hardware`.
+
 **Judul Skripsi:** Prediksi Anomali Termal pada Environment Monitoring System Server Menggunakan Algoritma Long Short-Term Memory  
 **Jenis Dokumen:** Demo Script Document  
 **Versi:** 1.0  

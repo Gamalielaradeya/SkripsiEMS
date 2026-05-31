@@ -6,22 +6,19 @@ import logging
 log = logging.getLogger("ml.baseline")
 
 
-def persistence_model(y_test: np.ndarray) -> np.ndarray:
+def persistence_model(X_test: np.ndarray, temperature_s2_index: int = 2) -> np.ndarray:
     """
-    Persistence model: prediksi = nilai sebelumnya.
-    y_pred[i] = y_test[i-1]
+    Persistence model causal: prediksi horizon = S2 terakhir pada input window.
     """
-    y_pred = np.roll(y_test, 1)
-    y_pred[0] = y_test[0]
-    return y_pred
+    return X_test[:, -1, temperature_s2_index]
 
 
-def moving_average_model(y_test: np.ndarray, window: int = 5) -> np.ndarray:
+def moving_average_model(
+    X_test: np.ndarray,
+    window: int = 5,
+    temperature_s2_index: int = 2,
+) -> np.ndarray:
     """
-    Moving Average model dengan window tertentu.
+    Moving Average causal: rata-rata S2 terakhir dari setiap input window.
     """
-    y_pred = np.convolve(y_test, np.ones(window) / window, mode="same")
-    # Perbaiki awal window yang terpotong
-    for i in range(window - 1):
-        y_pred[i] = np.mean(y_test[:i + 1])
-    return y_pred
+    return np.mean(X_test[:, -window:, temperature_s2_index], axis=1)

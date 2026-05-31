@@ -56,15 +56,17 @@ def preprocess(df: pd.DataFrame, horizon_minutes: int = 5) -> pd.DataFrame:
     return merged.reset_index()
 
 
-def remove_outliers(df: pd.DataFrame) -> pd.DataFrame:
-    """Remove temperature/humidity outliers menggunakan IQR."""
+def remove_outliers(df: pd.DataFrame, reference_ratio: float = 0.8) -> pd.DataFrame:
+    """Remove outliers memakai batas quantile dari bagian awal data saja."""
     numeric_cols = ["temperature_s1", "humidity_s1", "temperature_s2", "humidity_s2"]
     before = len(df)
+    reference_end = max(1, int(len(df) * reference_ratio))
+    reference = df.iloc[:reference_end]
     for col in numeric_cols:
         if col not in df.columns:
             continue
-        Q1 = df[col].quantile(0.01)
-        Q3 = df[col].quantile(0.99)
+        Q1 = reference[col].quantile(0.01)
+        Q3 = reference[col].quantile(0.99)
         df = df[(df[col] >= Q1) & (df[col] <= Q3)]
     after = len(df)
     if before > after:

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Send } from 'lucide-react'
 import { api } from '@/lib/api'
+import { useSSE } from '@/lib/sse'
 import { formatDateTime } from '@/lib/utils'
 import { LoadingSpinner, EmptyState, ErrorState } from '@/components/ui'
 import type { NotificationLog } from '@/types'
@@ -23,6 +24,9 @@ export default function NotificationsPage() {
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
+  useSSE(useCallback((event) => {
+    if (event === 'notification.sent') fetchData()
+  }, [fetchData]))
 
   const sendTest = async () => {
     setTestSending(true)

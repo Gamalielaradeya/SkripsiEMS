@@ -23,3 +23,10 @@ Buka: http://localhost:5173
 - **Notifications** — Riwayat notifikasi Telegram
 - **Settings** — Konfigurasi threshold
 - **System Logs** — Log sistem
+
+## Catatan Implementasi
+
+- Layout sensor memakai database EMS sebagai sumber utama posisi.
+- Browser menyimpan localStorage hanya sebagai draft fallback saat API layout gagal.
+- SSE menangani `reading.latest`, `sensor.trouble`, `prediction.latest`, `anomaly.created`, dan `notification.sent`.
+- Dashboard menyediakan sidebar desktop dan bottom navigation mobile.

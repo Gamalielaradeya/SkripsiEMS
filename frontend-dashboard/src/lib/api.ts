@@ -28,6 +28,12 @@ async function put<T>(path: string, body: unknown): Promise<T> {
   return res.json()
 }
 
+async function del<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`API DELETE ${path} -> ${res.status}`)
+  return res.json()
+}
+
 // ── API Methods ───────────────────────────────────────────────────────────
 
 export const api = {
@@ -50,6 +56,10 @@ export const api = {
   notificationsTest: () => post('/api/v1/notifications/test', {}),
   settings:        () => get('/api/v1/settings'),
   settingUpdate:   (key: string, value: string) => put(`/api/v1/settings/${key}`, { value }),
+  layout:          () => get('/api/v1/layout'),
+  layoutDeviceUpdate: (sensorCode: string, posX: number, posY: number, label: string) =>
+    put(`/api/v1/layout/devices/${sensorCode}`, { pos_x: posX, pos_y: posY, label }),
+  layoutDeviceDelete: (sensorCode: string) => del(`/api/v1/layout/devices/${sensorCode}`),
   systemLogs:      (limit = 100, offset = 0) =>
     get(`/api/v1/system-logs?limit=${limit}&offset=${offset}`),
 }

@@ -5,6 +5,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def project_path(env_name: str, default: str) -> str:
+    value = os.getenv(env_name, default)
+    if os.path.isabs(value):
+        return value
+    return os.path.join(PROJECT_DIR, value)
+
 
 class Config:
     # Database
@@ -15,8 +24,11 @@ class Config:
     DB_PASSWORD = os.getenv("DB_PASSWORD", "ems_password")
 
     # Backend
-    BACKEND_URL       = os.getenv("BACKEND_URL", "http://localhost:8080")
-    BACKEND_API_TOKEN = os.getenv("BACKEND_API_TOKEN", "dev-token-change-in-production")
+    BACKEND_URL         = os.getenv("BACKEND_URL", "http://localhost:8080")
+    ML_WORKER_API_TOKEN = os.getenv(
+        "ML_WORKER_API_TOKEN",
+        os.getenv("BACKEND_API_TOKEN", "dev-ml-worker-token-change-in-production"),
+    )
 
     # ML Hyperparams
     WINDOW_SIZE               = int(os.getenv("WINDOW_SIZE", "30"))
@@ -32,8 +44,8 @@ class Config:
     THRESHOLD_ANOMALY_MIN = float(os.getenv("THRESHOLD_ANOMALY_MIN", "32.0"))
 
     # Paths
-    MODEL_DIR  = os.getenv("MODEL_DIR", "models/")
-    SCALER_DIR = os.getenv("SCALER_DIR", "models/")
+    MODEL_DIR  = project_path("MODEL_DIR", "models/")
+    SCALER_DIR = project_path("SCALER_DIR", "models/")
 
     @property
     def DSN(self):

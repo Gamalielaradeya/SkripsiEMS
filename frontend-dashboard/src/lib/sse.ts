@@ -20,6 +20,10 @@ export function useSSE(onEvent: SSEHandler, onConnect?: ConnectCallback) {
       onConnect?.(true)
       try { onEvent('reading.latest', JSON.parse(e.data)) } catch {}
     })
+    es.addEventListener('sensor.trouble', (e) => {
+      onConnect?.(true)
+      try { onEvent('sensor.trouble', JSON.parse(e.data)) } catch {}
+    })
     es.addEventListener('prediction.latest', (e) => {
       onConnect?.(true)
       try { onEvent('prediction.latest', JSON.parse(e.data)) } catch {}
@@ -29,6 +33,7 @@ export function useSSE(onEvent: SSEHandler, onConnect?: ConnectCallback) {
       try { onEvent('anomaly.created', JSON.parse(e.data)) } catch {}
     })
     es.addEventListener('notification.sent', (e) => {
+      onConnect?.(true)
       try { onEvent('notification.sent', JSON.parse(e.data)) } catch {}
     })
     // Mark connected on open
@@ -39,7 +44,7 @@ export function useSSE(onEvent: SSEHandler, onConnect?: ConnectCallback) {
       es.close()
       reconnectTimer.current = setTimeout(connect, 5000)
     }
-  }, [onEvent])
+  }, [onEvent, onConnect])
 
   useEffect(() => {
     connect()

@@ -29,7 +29,7 @@ export function Topbar({ thermalStatus = 'normal', connected = true, onRefresh, 
   const title = PAGE_TITLES[pathname] ?? 'EMS Monitor'
 
   return (
-    <header className="h-14 glass fixed top-0 left-60 right-0 z-30 flex items-center justify-between px-6">
+    <header className="h-14 glass fixed top-0 left-0 md:left-60 right-0 z-30 flex items-center justify-between px-4 md:px-6">
       <h1 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h1>
 
       <div className="flex items-center gap-4">
@@ -43,7 +43,7 @@ export function Topbar({ thermalStatus = 'normal', connected = true, onRefresh, 
 
         {/* Thermal status pill */}
         {thermalStatus && (
-          <span className={cn('badge', statusBg(thermalStatus))}>
+          <span className={cn('badge hidden sm:inline-flex', statusBg(thermalStatus))}>
             <span className={cn('status-dot', statusDot(thermalStatus))} />
             {statusLabel(thermalStatus)}
           </span>

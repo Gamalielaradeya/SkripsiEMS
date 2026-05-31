@@ -40,6 +40,7 @@ type TelegramConfig struct {
 
 type AppConfig struct {
 	GatewayAPIToken    string
+	MLWorkerAPIToken   string
 	CORSAllowedOrigins string
 	LogLevel           string
 }
@@ -75,6 +76,7 @@ func Load() (*Config, error) {
 		},
 		App: AppConfig{
 			GatewayAPIToken:    getEnv("GATEWAY_API_TOKEN", "dev-token-change-in-production"),
+			MLWorkerAPIToken:   getEnv("ML_WORKER_API_TOKEN", "dev-ml-worker-token-change-in-production"),
 			CORSAllowedOrigins: getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173"),
 			LogLevel:           getEnv("LOG_LEVEL", "info"),
 		},

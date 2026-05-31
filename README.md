@@ -3,6 +3,8 @@
 > **Skripsi Teknik Informatika — Universitas Bunda Mulia (UBM) 2026**
 > Sistem pemantauan suhu server testbed berbasis IoT dengan prediksi anomali menggunakan LSTM.
 
+> **Runbook demo terbaru:** gunakan [`Dokumentasi/15_Implementation_Runbook_Final.md`](Dokumentasi/15_Implementation_Runbook_Final.md). Dokumen tersebut memuat migration layout, callback internal ML, SSE final, dan pemisahan simulator dengan RPi gateway.
+
 ---
 
 ## 🏗️ Arsitektur Sistem
@@ -190,6 +192,9 @@ DB_NAME=ems_db
 # Gateway Auth
 GATEWAY_API_TOKEN=dev-token-change-in-production
 
+# ML Worker callback
+ML_WORKER_API_TOKEN=dev-ml-worker-token-change-in-production
+
 # Telegram (opsional)
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 TELEGRAM_CHAT_ID=your_chat_id_here
@@ -205,6 +210,7 @@ TELEGRAM_CHAT_ID=your_chat_id_here
 # Jalankan migrasi (sudah dieksekusi saat setup awal)
 docker exec -i ems_db psql -U ems_user -d ems_db < database/migrations/001_create_tables.sql
 docker exec -i ems_db psql -U ems_user -d ems_db < database/migrations/002_create_indexes.sql
+docker exec -i ems_db psql -U ems_user -d ems_db < database/migrations/004_layout_constraints.sql
 
 # Jalankan seed data
 docker exec -i ems_db psql -U ems_user -d ems_db < database/seed/001_seed_gateway.sql
@@ -213,6 +219,7 @@ docker exec -i ems_db psql -U ems_user -d ems_db < database/seed/003_seed_status
 docker exec -i ems_db psql -U ems_user -d ems_db < database/seed/004_seed_settings.sql
 docker exec -i ems_db psql -U ems_user -d ems_db < database/seed/005_seed_model_version.sql
 docker exec -i ems_db psql -U ems_user -d ems_db < database/seed/006_seed_api_tokens.sql
+docker exec -i ems_db psql -U ems_user -d ems_db < database/seed/007_seed_layout.sql
 ```
 
 ### Cek data

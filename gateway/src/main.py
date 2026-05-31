@@ -3,7 +3,8 @@ Gateway Simulator — EMS LSTM Thermal Anomaly
 Entry point utama. Jalankan dengan:
   python src/main.py --mode simulator --scenario normal
   python src/main.py --mode simulator --scenario waspada
-  python src/main.py --mode hardware
+
+Untuk sensor fisik gunakan program mandiri gateway-rpi/.
 """
 
 import argparse
@@ -19,7 +20,7 @@ from local_logger import setup_logging
 
 def main():
     parser = argparse.ArgumentParser(description="EMS Gateway")
-    parser.add_argument("--mode",     choices=["simulator", "hardware", "replay"], default="simulator")
+    parser.add_argument("--mode",     choices=["simulator"], default="simulator")
     parser.add_argument("--scenario", choices=["normal", "warming", "waspada", "anomali", "trouble"], default="normal")
     parser.add_argument("--config",   default="config.yaml")
     args = parser.parse_args()
@@ -62,45 +63,6 @@ def main():
         except KeyboardInterrupt:
             log.info("Gateway stopped.")
             sys.exit(0)
-
-    elif args.mode == "hardware":
-        try:
-            from modbus_reader import ModbusReader
-            from sensor_validator import SensorValidator
-            from payload_builder import PayloadBuilder
-
-            reader = ModbusReader(
-                port=config["modbus"]["port"],
-                baudrate=config["modbus"]["baudrate"],
-                bytesize=config["modbus"].get("bytesize", 8),
-                parity=config["modbus"].get("parity", "N"),
-                stopbits=config["modbus"].get("stopbits", 1),
-                timeout=config["modbus"].get("timeout_seconds", 3),
-            )
-
-            validator = SensorValidator()
-            builder = PayloadBuilder(gateway_id=config["gateway"]["id"])
-            interval = config["simulator"].get("interval_seconds", 60)
-
-            log.info("Hardware mode aktif. Membaca sensor via Modbus...")
-            while True:
-                try:
-                    s1_raw = reader.read(slave_id=config["sensor"]["s1"]["slave_id"])
-                    s2_raw = reader.read(slave_id=config["sensor"]["s2"]["slave_id"])
-                    s1 = validator.validate(s1_raw, "S1")
-                    s2 = validator.validate(s2_raw, "S2")
-                    payload = builder.build(s1, s2, source="hardware")
-                    sender.send(payload)
-                except Exception as e:
-                    log.error(f"Hardware read error: {e}")
-                time.sleep(interval)
-        except KeyboardInterrupt:
-            log.info("Gateway stopped.")
-            sys.exit(0)
-
-    else:
-        log.error("Mode 'replay' belum diimplementasikan.")
-        sys.exit(1)
 
 
 if __name__ == "__main__":

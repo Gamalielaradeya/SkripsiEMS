@@ -1,9 +1,9 @@
 ems_server:
-  api_token: ems-gateway-token
+  api_token: dev-token-change-in-production
   timeout: 10
   url: http://192.168.1.100:8080
 gateway:
-  id: rpi-gateway-001
+  id: raspi-gateway-01
   location: ''
   name: EMS Gateway RPi
 gather_data:

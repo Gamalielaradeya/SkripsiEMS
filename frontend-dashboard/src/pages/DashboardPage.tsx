@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Thermometer, Droplets, TrendingUp, Activity, AlertTriangle, Clock } from 'lucide-react'
+import { Thermometer, Droplets, TrendingUp, Activity, AlertTriangle, Clock, Server } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useSSE } from '@/lib/sse'
 import { formatTemp, formatHum, formatDateTime, formatRelative, cn, statusBg, statusDot, statusLabel } from '@/lib/utils'
@@ -35,7 +35,7 @@ export default function DashboardPage() {
 
   // SSE real-time updates
   useSSE(useCallback((event) => {
-    if (event === 'reading.latest' || event === 'prediction.latest') {
+    if (event === 'reading.latest' || event === 'sensor.trouble' || event === 'prediction.latest' || event === 'anomaly.created') {
       fetchData()
     }
   }, [fetchData]))
@@ -65,7 +65,19 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-        <StatusBadge status={thermalStatus} size="lg" pulse />
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-gray-500">
+            <Server className="w-3.5 h-3.5" />
+            Gateway
+            <span className={cn(
+              'font-semibold uppercase',
+              summary?.gateway_status === 'online' ? 'text-green-400' : 'text-red-400'
+            )}>
+              {summary?.gateway_status ?? 'offline'}
+            </span>
+          </div>
+          <StatusBadge status={thermalStatus} size="lg" pulse />
+        </div>
       </div>
 
       {/* ── Layout Preview + Sensor Cards (side by side) ── */}

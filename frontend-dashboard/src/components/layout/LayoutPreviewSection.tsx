@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react'
 import { Map, ExternalLink } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { api } from '@/lib/api'
 import { SensorLayoutMap } from '@/components/layout/SensorLayoutMap'
-import type { SensorNode } from '@/components/layout/SensorLayoutMap'
+import type { PositionMap, SensorNode } from '@/components/layout/SensorLayoutMap'
+import type { ActiveLayoutResponse, ThermalStatus } from '@/types'
 
 interface LayoutPreviewSectionProps {
   s1?: { temperature?: number | null; humidity?: number | null } | null
@@ -10,6 +13,20 @@ interface LayoutPreviewSectionProps {
 }
 
 export function LayoutPreviewSection({ s1, s2, thermalStatus }: LayoutPreviewSectionProps) {
+  const [positions, setPositions] = useState<PositionMap | undefined>()
+
+  useEffect(() => {
+    api.layout()
+      .then(result => {
+        const layout = result as ActiveLayoutResponse
+        setPositions(Object.fromEntries(layout.devices.map(d => [
+          d.sensor_code,
+          { x: d.pos_x, y: d.pos_y },
+        ])))
+      })
+      .catch(() => setPositions(undefined))
+  }, [])
+
   const sensors: SensorNode[] = [
     {
       id: 'S1',
@@ -25,7 +42,7 @@ export function LayoutPreviewSection({ s1, s2, thermalStatus }: LayoutPreviewSec
       role: 'Hotspot/Exhaust',
       temperature: s2?.temperature,
       humidity: s2?.humidity,
-      status: (thermalStatus as 'normal' | 'waspada' | 'anomali') ?? 'normal',
+      status: (thermalStatus as ThermalStatus) ?? 'normal',
     },
   ]
 
@@ -45,7 +62,7 @@ export function LayoutPreviewSection({ s1, s2, thermalStatus }: LayoutPreviewSec
         </Link>
       </div>
 
-      <SensorLayoutMap sensors={sensors} editMode={false} height={220} />
+      <SensorLayoutMap sensors={sensors} editMode={false} height={220} initialPositions={positions} />
     </div>
   )
 }

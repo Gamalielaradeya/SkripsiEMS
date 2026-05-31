@@ -1,5 +1,7 @@
 # 05 API Specification — EMS LSTM Thermal Anomaly Monitoring System
 
+> **Catatan implementasi terbaru:** gunakan `15_Implementation_Runbook_Final.md` untuk endpoint yang benar-benar tersedia. Tambahan final: `POST /api/v1/ml/inference-events`, `GET /api/v1/layout`, `PUT /api/v1/layout/devices/{sensorCode}`, dan `DELETE /api/v1/layout/devices/{sensorCode}`. Contoh endpoint lama yang tidak ada di router Go bersifat rancangan historis.
+
 **Judul Skripsi:** Prediksi Anomali Termal pada Environment Monitoring System Server Menggunakan Algoritma Long Short-Term Memory  
 **Jenis Dokumen:** API Specification Document  
 **Versi:** 1.0  
